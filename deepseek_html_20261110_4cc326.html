@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f766e" />
+  <title>Viajes Perdomo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #0f766e; --primary-dark: #115e59; --accent: #f59e0b;
+      --bg: #f8fafc; --card: #ffffff; --text: #0f172a; --muted: #64748b;
+      --border: #e2e8f0; --success: #16a34a; --danger: #dc2626; --radius: 14px;
+    }
+    body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* --- SPLASH SCREEN --- */
+    #splash-screen {
+      position: fixed; inset: 0; background: var(--primary-dark); z-index: 9999;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: white; transition: opacity 0.5s ease;
+    }
+    #splash-screen.hidden { opacity: 0; pointer-events: none; }
+    .splash-logo { font-size: 4rem; animation: bounce 1s infinite alternate; margin-bottom: 1rem; }
+    .splash-title { font-size: 1.8rem; font-weight: 800; letter-spacing: 1px; }
+    @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-15px); } }
+
+    /* --- LOGIN SCREEN --- */
+    #login-screen {
+      position: fixed; inset: 0; background: var(--bg); z-index: 9000;
+      display: none; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem;
+    }
+    #login-screen.active { display: flex; }
+    .login-card { background: white; border-radius: var(--radius); padding: 2rem; width: 100%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+    .login-card h2 { text-align: center; color: var(--primary); margin-bottom: 1.5rem; }
+    .input-group { margin-bottom: 1rem; }
+    .input-group label { display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.3rem; color: var(--muted); }
+    .input-group input { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; }
+    .btn-main { width: 100%; background: var(--primary); color: white; border: none; padding: 0.8rem; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 0.5rem; }
+    .btn-google { width: 100%; background: white; color: #333; border: 1px solid #ccc; padding: 0.8rem; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+    .btn-google:hover { background: #f1f1f1; }
+    .toggle-auth { text-align: center; margin-top: 1rem; font-size: 0.9rem; color: var(--primary); cursor: pointer; text-decoration: underline; }
+
+    /* --- APP (Oculta al inicio) --- */
+    #main-app { display: none; flex-direction: column; flex: 1; }
+    #main-app.active { display: flex; }
+
+    header { background: var(--primary); color: white; padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center; }
+    .logo { font-size: 1.25rem; font-weight: 800; }
+    nav button { background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.45rem 0.85rem; border-radius: 999px; cursor: pointer; font-weight: 600; margin-left: 0.5rem; }
+    nav button.active { background: white; color: var(--primary); }
+    .btn-logout { background: transparent; border: 1px solid white; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; margin-left: 0.5rem;}
+
+    .hero { background: var(--primary-dark); color: white; padding: 2rem 1rem 3.5rem; text-align: center; }
+    .hero h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    
+    .search-box { background: white; border-radius: var(--radius); padding: 0.9rem; max-width: 900px; margin: -2rem auto 1rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; box-shadow: 0 4px 15px rgba(0,0,0,0.1); position: relative; z-index: 10; }
+    .field { display: flex; flex-direction: column; }
+    .field input, .field select { padding: 0.55rem; border: 1px solid var(--border); border-radius: 8px; width: 100%; }
+    .search-box button { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 0.65rem; font-weight: 700; cursor: pointer; grid-column: 1 / -1; }
+
+    main { max-width: 1200px; margin: 0 auto; padding: 1rem; width: 100%; flex: 1; }
+    .filters { display: flex; gap: 0.4rem; overflow-x: auto; margin-bottom: 1rem; }
+    .chip { background: white; border: 1px solid var(--border); border-radius: 999px; padding: 0.35rem 0.8rem; cursor: pointer; white-space: nowrap; }
+    .chip.active { background: var(--primary); color: white; }
+
+    .trips-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+    .trip-card { background: white; border-radius: var(--radius); overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+    .trip-img { height: 140px; background-size: cover; background-position: center; position: relative; padding: 0.6rem; display: flex; justify-content: space-between; align-items: flex-start; }
+    .trip-price { background: var(--accent); color: white; font-weight: 800; padding: 0.3rem 0.7rem; border-radius: 999px; }
+    .badge-guagua { position: absolute; bottom: 0.6rem; left: 0.6rem; background: rgba(0,0,0,0.7); color: white; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.7rem; }
+    .trip-body { padding: 0.85rem; }
+    .trip-route { font-size: 1.1rem; font-weight: 800; margin-bottom: 0.5rem; }
+    .trip-meta { display: flex; gap: 0.35rem; font-size: 0.75rem; color: var(--muted); margin-bottom: 0.5rem; }
+    .trip-meta span { background: var(--bg); padding: 0.2rem 0.5rem; border-radius: 6px; }
+    .trip-actions { display: flex; gap: 0.5rem; margin-top: 0.6rem; }
+    .btn-reserve { flex: 1; background: var(--primary); color: white; border: none; border-radius: 8px; padding: 0.7rem; font-weight: 700; cursor: pointer; }
+
+    /* Modal y Toast */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: white; width: 100%; max-width: 500px; border-radius: var(--radius); overflow-y: auto; max-height: 90vh; }
+    .modal-header { padding: 1rem; background: var(--primary); color: white; display: flex; justify-content: space-between; }
+    .modal-body { padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+    .btn-confirm { background: var(--success); color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .toast { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--success); color: white; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: 700; opacity: 0; transition: 0.3s; z-index: 2000; }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    @media (min-width: 600px) {
+      .search-box { grid-template-columns: repeat(4, 1fr); }
+      .search-box button { grid-column: auto; }
+      .trips-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (min-width: 900px) {
+      .trips-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. SPLASH SCREEN -->
+  <div id="splash-screen">
+    <div class="splash-logo">🚌</div>
+    <div class="splash-title">Viajes Perdomo</div>
+  </div>
+
+  <!-- 2. LOGIN SCREEN -->
+  <div id="login-screen">
+    <div class="login-card">
+      <h2 id="auth-title">Iniciar Sesión</h2>
+      
+      <div class="input-group" id="group-nombre" style="display:none;">
+        <label>Nombre completo</label>
+        <input type="text" id="auth-nombre" placeholder="Tu nombre" />
+      </div>
+
+      <div class="input-group">
+        <label>Correo electrónico</label>
+        <input type="email" id="auth-email" placeholder="correo@ejemplo.com" />
+      </div>
+
+      <div class="input-group">
+        <label>Contraseña</label>
+        <input type="password" id="auth-password" placeholder="••••••••" />
+      </div>
+
+      <button class="btn-main" id="btn-auth-submit">Entrar</button>
+      
+      <div style="text-align: center; margin: 1rem 0; color: var(--muted);">o</div>
+      
+      <button class="btn-google" id="btn-google">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="G" width="20" />
+        Acceder con Gmail
+      </button>
+
+      <div class="toggle-auth" id="toggle-auth-mode">¿No tienes cuenta? Regístrate aquí</div>
+    </div>
+  </div>
+
+  <!-- 3. APP PRINCIPAL -->
+  <div id="main-app">
+    <header>
+      <div class="logo">🚌 Viajes Perdomo</div>
+      <div style="display:flex; align-items:center;">
+        <span id="user-display" style="font-size:0.8rem; margin-right:0.5rem;">Hola</span>
+        <button class="btn-logout" id="btn-logout">Salir</button>
+      </div>
+    </header>
+
+    <section class="hero">
+      <h1>Viaja cómodo por Cuba</h1>
+      <p>Guaguas Yutong con A/C y WiFi.</p>
+    </section>
+
+    <div class="search-box">
+      <div class="field">
+        <label>Origen</label>
+        <select id="origen"><option value="">Cualquiera</option><option>La Habana</option><option>Varadero</option><option>Santiago de Cuba</option><option>Holguín</option><option>Trinidad</option></select>
+      </div>
+      <div class="field">
+        <label>Destino</label>
+        <select id="destino"><option value="">Cualquiera</option><option>La Habana</option><option>Varadero</option><option>Santiago de Cuba</option><option>Holguín</option><option>Trinidad</option></select>
+      </div>
+      <div class="field"><label>Fecha</label><input type="date" id="fecha" /></div>
+      <div class="field"><label>Personas</label><input type="number" id="personas" min="1" max="10" value="1" /></div>
+      <button id="btn-buscar">🔍 Buscar</button>
+    </div>
+
+    <main>
+      <div class="filters" id="filtros">
+        <button class="chip active" data-filter="all">Todas</button>
+        <button class="chip" data-filter="este">🛣️ Este</button>
+        <button class="chip" data-filter="centro">🛣️ Centro</button>
+        <button class="chip" data-filter="oeste">🛣️ Oeste</button>
+        <button class="chip" data-filter="especial">⭐ Especiales</button>
+      </div>
+      <div class="trips-grid" id="trips-grid"></div>
+    </main>
+  </div>
+
+  <!-- MODAL RESERVA -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <div class="modal-header"><h3 id="modal-titulo">Reservar</h3><button id="modal-close" style="background:none;border:none;color:white;cursor:pointer;">✕</button></div>
+      <div class="modal-body">
+        <div id="modal-summary" style="background:#f8fafc; padding:0.8rem; border-radius:8px;"></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+          <div class="input-group"><label>CI</label><input type="text" id="res-ci" /></div>
+          <div class="input-group"><label>Teléfono</label><input type="tel" id="res-telefono" /></div>
+        </div>
+        <div class="input-group"><label>Fecha del viaje</label><input type="date" id="res-fecha" /></div>
+        <div class="input-group"><label>Cantidad Pasajeros</label><input type="number" id="res-cantidad" min="1" value="1" /></div>
+        <button class="btn-confirm" id="btn-confirmar">✅ Confirmar Reserva</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ==========================================
+    // ESTADO GLOBAL
+    // ==========================================
+    let GUAGUAS = [];
+    let USER = null;
+    let isRegisterMode = false;
+    let viajeSeleccionado = null;
+
+    const $ = (s) => document.querySelector(s);
+
+    function mostrarToast(mensaje, tipo = 'success') {
+      const toast = $('#toast');
+      toast.textContent = mensaje;
+      toast.style.background = tipo === 'success' ? 'var(--success)' : 'var(--danger)';
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // ==========================================
+    // 1. FLUJO SPLASH -> LOGIN/APP
+    // ==========================================
+    window.addEventListener('DOMContentLoaded', () => {
+      // Ocultar splash a los 2 segundos
+      setTimeout(() => {
+        $('#splash-screen').classList.add('hidden');
+        
+        // Verificar si hay sesión guardada
+        const savedUser = localStorage.getItem('vp_user');
+        if (savedUser) {
+          USER = JSON.parse(savedUser);
+          iniciarApp();
+        } else {
+          $('#login-screen').classList.add('active');
+        }
+      }, 2000);
+    });
+
+    // ==========================================
+    // 2. LÓGICA DE AUTENTICACIÓN
+    // ==========================================
+    $('#toggle-auth-mode').addEventListener('click', () => {
+      isRegisterMode = !isRegisterMode;
+      if (isRegisterMode) {
+        $('#auth-title').textContent = 'Crear Cuenta';
+        $('#group-nombre').style.display = 'block';
+        $('#btn-auth-submit').textContent = 'Registrarse';
+        $('#toggle-auth-mode').textContent = '¿Ya tienes cuenta? Inicia sesión';
+      } else {
+        $('#auth-title').textContent = 'Iniciar Sesión';
+        $('#group-nombre').style.display = 'none';
+        $('#btn-auth-submit').textContent = 'Entrar';
+        $('#toggle-auth-mode').textContent = '¿No tienes cuenta? Regístrate aquí';
+      }
+    });
+
+    $('#btn-auth-submit').addEventListener('click', async () => {
+      const nombre = $('#auth-nombre').value;
+      const email = $('#auth-email').value;
+      const password = $('#auth-password').value;
+
+      if (!email || !password || (isRegisterMode && !nombre)) {
+        return mostrarToast('Completa todos los campos', 'error');
+      }
+
+      const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
+      const payload = isRegisterMode ? { nombre, email, password } : { email, password };
+
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error);
+
+        // Éxito
+        USER = data.usuario;
+        localStorage.setItem('vp_user', JSON.stringify(USER));
+        mostrarToast(`Bienvenido, ${USER.nombre}`);
+        iniciarApp();
+      } catch (error) {
+        mostrarToast(error.message, 'error');
+      }
+    });
+
+    // Simulación de Google Login
+    $('#btn-google').addEventListener('click', async () => {
+      // Simulamos que Google nos devuelve un correo
+      const emailSimulado = prompt("Simulando Google Login.\nIngresa tu correo de Gmail:", "usuario@gmail.com");
+      if (!emailSimulado) return;
+
+      try {
+        // Intentamos loguear, si falla es porque no existe, entonces lo registramos
+        let res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: emailSimulado, password: 'google-auth-temp' })
+        });
+
+        let data = await res.json();
+
+        if (!res.ok) {
+          // No existe, lo creamos
+          res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre: emailSimulado.split('@')[0], email: emailSimulado, password: 'google-auth-temp' })
+          });
+          data = await res.json();
+        }
+
+        USER = data.usuario;
+        localStorage.setItem('vp_user', JSON.stringify(USER));
+        mostrarToast(`Bienvenido, ${USER.nombre}`);
+        iniciarApp();
+
+      } catch (error) {
+        mostrarToast('Error con Google Login', 'error');
+      }
+    });
+
+    $('#btn-logout').addEventListener('click', () => {
+      localStorage.removeItem('vp_user');
+      USER = null;
+      $('#main-app').classList.remove('active');
+      $('#login-screen').classList.add('active');
+    });
+
+    // ==========================================
+    // 3. INICIAR APP (Cargar datos)
+    // ==========================================
+    function iniciarApp() {
+      $('#login-screen').classList.remove('active');
+      $('#main-app').classList.add('active');
+      $('#user-display').textContent = `Hola, ${USER.nombre}`;
+      cargarGuaguas();
+    }
+
+    async function cargarGuaguas() {
+      try {
+        const res = await fetch('/api/guaguas');
+        GUAGUAS = await res.json();
+        renderGuaguas();
+      } catch (error) {
+        mostrarToast('Error cargando guaguas', 'error');
+      }
+    }
+
+    function renderGuaguas() {
+      const grid = $('#trips-grid');
+      const filtro = $('.chip.active').dataset.filter;
+      const origen = $('#origen').value;
+      const destino = $('#destino').value;
+
+      let lista = GUAGUAS.filter(v => {
+        if (!v.activa) return false;
+        if (filtro !== 'all' && v.region.toLowerCase() !== filtro) return false;
+        if (origen && v.origen !== origen) return false;
+        if (destino && v.destino !== destino) return false;
+        return true;
+      });
+
+      if (lista.length === 0) {
+        grid.innerHTML = `<p style="grid-column:1/-1; text-align:center; padding:2rem;">No hay guaguas disponibles.</p>`;
+        return;
+      }
+
+      grid.innerHTML = lista.map(v => `
+        <article class="trip-card">
+          <div class="trip-img" style="background-image:url('${v.imagen}')">
+            ${v.oferta ? '<span style="background:red;color:white;padding:0.2rem 0.5rem;border-radius:4px;font-size:0.7rem;">OFERTA</span>' : '<span></span>'}
+            <span class="trip-price">${v.precio} ${v.moneda}</span>
+            <span class="badge-guagua">🚌 ${v.unidad}</span>
+          </div>
+          <div class="trip-body">
+            <div class="trip-route">${v.origen} → ${v.destino}</div>
+            <div class="trip-meta"><span>🪑 ${v.asientosDisp} disp.</span><span>🕐 ${v.salida}</span></div>
+            <div class="trip-actions">
+              <button class="btn-reserve" onclick="abrirModal('${v.id}')" ${v.asientosDisp <= 0 ? 'disabled style="background:#ccc"' : ''}>
+                ${v.asientosDisp > 0 ? 'Reservar' : 'Agotado'}
+              </button>
+            </div>
+          </div>
+        </article>
+      `).join('');
+    }
+
+    // ==========================================
+    // 4. LÓGICA DE RESERVA
+    // ==========================================
+    window.abrirModal = (id) => {
+      viajeSeleccionado = GUAGUAS.find(v => v.id === id);
+      if(!viajeSeleccionado) return;
+
+      $('#modal-titulo').textContent = `${viajeSeleccionado.origen} → ${viajeSeleccionado.destino}`;
+      $('#modal-summary').innerHTML = `<p><strong>🚌 ${viajeSeleccionado.unidad}</strong> | ${viajeSeleccionado.precio} ${viajeSeleccionado.moneda} c/u</p>`;
+      $('#res-cantidad').max = viajeSeleccionado.asientosDisp;
+      $('#modal').classList.add('open');
+    };
+
+    $('#modal-close').addEventListener('click', () => $('#modal').classList.remove('open'));
+
+    $('#btn-confirmar').addEventListener('click', async () => {
+      const ci = $('#res-ci').value;
+      const telefono = $('#res-telefono').value;
+      const fechaViaje = $('#res-fecha').value;
+      const cantidad = parseInt($('#res-cantidad').value);
+
+      if (!ci || !telefono || !fechaViaje) return mostrarToast('Completa los datos', 'error');
+
+      try {
+        const res = await fetch('/api/reservas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nombre: USER.nombre,
+            email: USER.email,
+            ci,
+            telefono,
+            guaguaId: viajeSeleccionado.id,
+            fechaViaje,
+            cantidad
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        mostrarToast(`¡Reserva exitosa! Código: ${data.codigo}`);
+        $('#modal').classList.remove('open');
+        cargarGuaguas(); // Recargar para actualizar asientos
+      } catch (error) {
+        mostrarToast(error.message, 'error');
+      }
+    });
+
+    // Eventos UI
+    $('#filtros').addEventListener('click', (e) => {
+      if (!e.target.classList.contains('chip')) return;
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      e.target.classList.add('active');
+      renderGuaguas();
+    });
+    $('#btn-buscar').addEventListener('click', renderGuaguas);
+  </script>
+</body>
+</html>
