@@ -1,0 +1,36 @@
+[
+  {
+    "id": "1",
+    "unidad": "Yutong A1",
+    "region": "este",
+    "origen": "La Habana",
+    "destino": "Santiago de Cuba",
+    "precio": 8500,
+    "moneda": "CUP",
+    "duracion": "12h 30min",
+    "salida": "18:00",
+    "asientos": 45,
+    "asientosDisp": 45,
+    "oferta": true,
+    "activa": true,
+    "imagen": "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&q=80",
+    "descripcion": "Guagua Yutong de larga distancia."
+  },
+  {
+    "id": "2",
+    "unidad": "Yutong B2",
+    "region": "oeste",
+    "origen": "La Habana",
+    "destino": "Varadero",
+    "precio": 1200,
+    "moneda": "CUP",
+    "duracion": "2h 30min",
+    "salida": "08:00",
+    "asientos": 30,
+    "asientosDisp": 30,
+    "oferta": false,
+    "activa": true,
+    "imagen": "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=800&q=80",
+    "descripcion": "Guagua climatizada."
+  }
+]
