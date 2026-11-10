@@ -40,8 +40,9 @@ const githubApi = async (endpoint, options = {}) => {
   }
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
+    // MEJORA 1: Mostrar el error real de GitHub en la consola y en el mensaje de error
     console.error(`❌ ERROR DE GITHUB (${res.status}):`, errorData.message || res.statusText);
-    throw new Error(`GitHub API Error: ${res.status}`);
+    throw new Error(`GitHub API Error: ${res.status} - ${errorData.message || res.statusText}`);
   }
   return res;
 };
@@ -63,23 +64,29 @@ async function leerJSON(nombreArchivo) {
 // Escribir un archivo JSON en GitHub (crear o actualizar)
 async function guardarJSON(nombreArchivo, contenidoJSON) {
   try {
+    // 1. Intentamos leer para obtener el SHA actual (si existe)
     const existente = await leerJSON(nombreArchivo);
+    
     const body = {
       message: `Actualizar ${nombreArchivo}.json desde Viajes Perdomos`,
       content: Buffer.from(JSON.stringify(contenidoJSON, null, 2)).toString('base64'),
       branch: GITHUB_BRANCH
     };
     
-    // Si el archivo ya existe, necesitamos pasarle el SHA para actualizarlo
-    if (existente) body.sha = existente.sha;
+    // MEJORA 2: Aseguramos que si existe, pasamos el SHA
+    if (existente && existente.sha) {
+      body.sha = existente.sha;
+    }
 
+    // 2. Hacemos la petición PUT
     const res = await githubApi(`${nombreArchivo}.json`, {
       method: 'PUT',
       body: JSON.stringify(body)
     });
     
     if (!res.ok) {
-      throw new Error(`Falló el guardado de ${nombreArchivo}`);
+      const err = await res.json();
+      throw new Error(err.message || `Falló el guardado de ${nombreArchivo}`);
     }
     console.log(`✅ ${nombreArchivo}.json guardado en GitHub`);
     return true;
@@ -119,7 +126,7 @@ async function inicializarDatos() {
       await guardarJSON('usuarios', []);
     }
   } catch (error) {
-    console.error("⚠️ Error inicializando datos (revisa el token):", error.message);
+    console.error("⚠️ Error inicializando datos (revisa el token o los logs de GitHub):", error.message);
   }
 }
 
