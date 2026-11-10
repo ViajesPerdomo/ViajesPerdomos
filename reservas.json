@@ -29,5 +29,21 @@
     "moneda": "CUP",
     "estado": "cancelada",
     "createdAt": "2026-11-10T03:22:11.990Z"
+  },
+  {
+    "nombre": "Kenn",
+    "email": "dgrisel90@gmail.com",
+    "gestorCodigo": "Kendry",
+    "ci": "03112074649",
+    "telefono": "53948837",
+    "guaguaId": "1",
+    "fechaViaje": "2026-11-10",
+    "cantidad": 1,
+    "id": "1794291420366",
+    "codigo": "VP-JA3TWN",
+    "total": 8500,
+    "moneda": "CUP",
+    "estado": "pendiente",
+    "createdAt": "2026-11-10T06:17:00.366Z"
   }
 ]
