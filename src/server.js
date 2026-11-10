@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Aumentado para permitir subida de imágenes Base64
 app.use(express.static(path.join(__dirname, '../public')));
 
 // ==========================================
@@ -19,7 +19,6 @@ const GITHUB_OWNER = process.env.GITHUB_OWNER;
 const GITHUB_REPO = process.env.GITHUB_REPO;
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 
-// VALIDACIÓN CRÍTICA: Si faltan variables, avisar en los logs
 if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
   console.error("❌ FALTAN VARIABLES DE ENTORNO EN RENDER:");
   console.error(`GITHUB_TOKEN: ${GITHUB_TOKEN ? 'OK' : 'FALTA'}`);
@@ -40,13 +39,8 @@ const githubApi = async (endpoint, options = {}) => {
     }
   });
   
-  if (res.status === 401) {
-    throw new Error("401 - Token inválido");
-  }
-  if (res.status === 404) {
-    // El 404 puede ser que el archivo no existe (normal) o que el repo/rama está mal.
-    return res; 
-  }
+  if (res.status === 401) throw new Error("401 - Token inválido");
+  if (res.status === 404) return res; 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
     throw new Error(`GitHub API Error: ${res.status} - ${errorData.message || res.statusText}`);
@@ -54,23 +48,20 @@ const githubApi = async (endpoint, options = {}) => {
   return res;
 };
 
-// Leer un archivo JSON desde GitHub
 async function leerJSON(nombreArchivo) {
   try {
     const res = await githubApi(`${nombreArchivo}.json?ref=${GITHUB_BRANCH}`);
-    if (res.status === 404) return null; // Archivo no existe, es normal en la primera ejecución
+    if (res.status === 404) return null; 
     
     const data = await res.json();
     const contenido = Buffer.from(data.content, 'base64').toString('utf8');
     return { data: JSON.parse(contenido), sha: data.sha };
   } catch (error) {
-    // Si falla por red o token, LANZAMOS el error para que no se guarde por encima
     console.error(`❌ Error leyendo ${nombreArchivo}:`, error.message);
     throw error; 
   }
 }
 
-// Escribir un archivo JSON en GitHub (crear o actualizar)
 async function guardarJSON(nombreArchivo, contenidoJSON, shaExistente = null) {
   try {
     const body = {
@@ -79,10 +70,7 @@ async function guardarJSON(nombreArchivo, contenidoJSON, shaExistente = null) {
       branch: GITHUB_BRANCH
     };
     
-    // Si nos pasaron un SHA (porque ya leímos el archivo antes), lo usamos para actualizar
-    if (shaExistente) {
-      body.sha = shaExistente;
-    }
+    if (shaExistente) body.sha = shaExistente;
 
     const res = await githubApi(`${nombreArchivo}.json`, {
       method: 'PUT',
@@ -110,12 +98,7 @@ async function inicializarDatos() {
 
     // 1. Guaguas
     let guaguasData = null;
-    try {
-      guaguasData = await leerJSON('guaguas');
-    } catch (e) {
-      console.error("No se pudo leer guaguas, abortando creación para evitar sobrescribir.", e.message);
-      return; // Si falla la lectura, no intentamos guardar nada
-    }
+    try { guaguasData = await leerJSON('guaguas'); } catch (e) { return; }
 
     if (!guaguasData) {
       console.log('🌱 Creando guaguas.json por primera vez...');
@@ -123,31 +106,30 @@ async function inicializarDatos() {
         { id: "1", unidad: "Yutong A1", region: "este", origen: "La Habana", destino: "Santiago de Cuba", precio: 8500, moneda: "CUP", duracion: "12h 30min", salida: "18:00", asientos: 45, asientosDisp: 45, oferta: true, activa: true, imagen: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&q=80", descripcion: "Guagua Yutong de larga distancia." },
         { id: "2", unidad: "Yutong B2", region: "oeste", origen: "La Habana", destino: "Varadero", precio: 1200, moneda: "CUP", duracion: "2h 30min", salida: "08:00", asientos: 30, asientosDisp: 30, oferta: false, activa: true, imagen: "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=800&q=80", descripcion: "Guagua climatizada." }
       ];
-      await guardarJSON('guaguas', guaguasIniciales); // Al no pasarle SHA, se crea nuevo
-    } else {
-      console.log('✅ guaguas.json ya existe en GitHub.');
+      await guardarJSON('guaguas', guaguasIniciales); 
     }
 
     // 2. Reservas
     let reservasData = null;
     try { reservasData = await leerJSON('reservas'); } catch(e) { return; }
+    if (!reservasData) await guardarJSON('reservas', []);
 
-    if (!reservasData) {
-      console.log('🌱 Creando reservas.json...');
-      await guardarJSON('reservas', []);
-    } else {
-      console.log('✅ reservas.json ya existe en GitHub.');
-    }
-
-    // 3. Usuarios
+    // 3. Usuarios (Credenciales del Admin)
     let usuariosData = null;
     try { usuariosData = await leerJSON('usuarios'); } catch(e) { return; }
+    if (!usuariosData) await guardarJSON('usuarios', []);
 
-    if (!usuariosData) {
-      console.log('🌱 Creando usuarios.json...');
-      await guardarJSON('usuarios', []);
-    } else {
-      console.log('✅ usuarios.json ya existe en GitHub.');
+    // 4. Configuración PWA
+    let configData = null;
+    try { configData = await leerJSON('config'); } catch(e) { return; }
+    if (!configData) {
+      console.log('🌱 Creando config.json...');
+      await guardarJSON('config', {
+        nombreApp: 'Viajes Perdomo',
+        icono: '🚌',
+        color: '#0f766e',
+        imagenHero: ''
+      });
     }
 
     console.log("🎉 Inicialización de datos completada.");
@@ -156,10 +138,8 @@ async function inicializarDatos() {
   }
 }
 
-// ... (El resto de tus endpoints GET, POST, PUT, DELETE se mantienen exactamente igual) ...
-
 // ==========================================
-// ENDPOINTS: USUARIOS Y LOGIN
+// ENDPOINTS: USUARIOS Y LOGIN (CLIENTES)
 // ==========================================
 app.get('/api/usuarios', async (req, res) => {
   const data = await leerJSON('usuarios');
@@ -194,9 +174,7 @@ app.post('/api/auth/login', async (req, res) => {
     const usuarios = data ? data.data : [];
 
     const usuario = usuarios.find(u => u.email === email && u.password === password);
-    if (!usuario) {
-      return res.status(401).json({ error: 'Credenciales incorrectas' });
-    }
+    if (!usuario) return res.status(401).json({ error: 'Credenciales incorrectas' });
 
     res.json({ mensaje: 'Login exitoso', usuario });
   } catch (error) {
@@ -346,6 +324,89 @@ app.delete('/api/reservas/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (error) {
     res.status(500).json({ error: 'Error al eliminar reserva' });
+  }
+});
+
+// ==========================================
+// NUEVOS ENDPOINTS: CREDENCIALES (ADMIN)
+// ==========================================
+app.get('/api/credenciales', async (req, res) => {
+  try {
+    const data = await leerJSON('credenciales');
+    res.json(data ? data.data : []);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al leer credenciales' });
+  }
+});
+
+app.post('/api/credenciales', async (req, res) => {
+  try {
+    const actual = await leerJSON('credenciales');
+    const lista = actual ? actual.data : [];
+    const sha = actual ? actual.sha : null;
+    
+    const nueva = { ...req.body, id: Date.now().toString() };
+    lista.push(nueva);
+    
+    await guardarJSON('credenciales', lista, sha);
+    res.status(201).json(nueva);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al crear credencial' });
+  }
+});
+
+app.put('/api/credenciales/:id', async (req, res) => {
+  try {
+    const actual = await leerJSON('credenciales');
+    const lista = actual ? actual.data : [];
+    const sha = actual ? actual.sha : null;
+    
+    const index = lista.findIndex(c => c.id === req.params.id);
+    if (index === -1) return res.status(404).json({ error: 'Credencial no encontrada' });
+    
+    lista[index] = { ...lista[index], ...req.body };
+    await guardarJSON('credenciales', lista, sha);
+    res.json(lista[index]);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar credencial' });
+  }
+});
+
+app.delete('/api/credenciales/:id', async (req, res) => {
+  try {
+    const actual = await leerJSON('credenciales');
+    const lista = actual ? actual.data.filter(c => c.id !== req.params.id) : [];
+    const sha = actual ? actual.sha : null;
+    
+    await guardarJSON('credenciales', lista, sha);
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar credencial' });
+  }
+});
+
+// ==========================================
+// NUEVOS ENDPOINTS: CONFIGURACIÓN PWA
+// ==========================================
+app.get('/api/config', async (req, res) => {
+  try {
+    const data = await leerJSON('config');
+    res.json(data ? data.data : {});
+  } catch (error) {
+    res.status(500).json({ error: 'Error al leer configuración' });
+  }
+});
+
+app.put('/api/config', async (req, res) => {
+  try {
+    const actual = await leerJSON('config');
+    const sha = actual ? actual.sha : null;
+    
+    // Guardamos la nueva configuración (sobrescribe la anterior)
+    await guardarJSON('config', req.body, sha);
+    res.json({ mensaje: 'Configuración actualizada', config: req.body });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al guardar configuración' });
   }
 });
 
