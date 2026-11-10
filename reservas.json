@@ -61,5 +61,21 @@
     "moneda": "CUP",
     "estado": "pendiente",
     "createdAt": "2026-11-10T07:38:46.715Z"
+  },
+  {
+    "nombre": "Kendry123",
+    "email": "dgrisel9@gmail.com",
+    "gestorCodigo": "Lisvania",
+    "ci": "03112074649",
+    "telefono": "53948837",
+    "guaguaId": "1",
+    "fechaViaje": "2026-11-11",
+    "cantidad": 1,
+    "id": "1794296346559",
+    "codigo": "VP-X0IHR1",
+    "total": 8500,
+    "moneda": "CUP",
+    "estado": "pendiente",
+    "createdAt": "2026-11-10T07:39:06.559Z"
   }
 ]
