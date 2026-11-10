@@ -25,7 +25,7 @@
     .login-card h2 { text-align: center; color: var(--primary); margin-bottom: 1.5rem; }
     .field { margin-bottom: 1rem; }
     .field label { display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.3rem; }
-    .field input { width: 100%; padding: 0.7rem; border: 1px solid var(--border); border-radius: 8px; }
+    .field input, .field select { width: 100%; padding: 0.7rem; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; }
     .btn-login { width: 100%; background: var(--primary); color: white; border: none; padding: 0.8rem; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
     /* ---------- Layout ---------- */
@@ -55,7 +55,7 @@
     .btn-secondary { background: white; border: 1px solid var(--border); padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; }
     .btn-danger { background: var(--danger); color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; }
 
-    /* Listas */
+    /* Listas y Tablas */
     .list { display: grid; grid-template-columns: 1fr; gap: 1rem; }
     .item-card { background: white; border-radius: var(--radius); padding: 1rem; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
     .item-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
@@ -77,6 +77,11 @@
     .modal-footer { padding: 1rem; border-top: 1px solid var(--border); display: flex; gap: 0.5rem; }
     .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 
+    /* Escáner QR */
+    #qr-reader { width: 100%; max-width: 400px; margin: 0 auto; border-radius: 8px; overflow: hidden; }
+    .result-card { margin-top: 1rem; padding: 1rem; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; display: none; }
+    .result-card.show { display: block; }
+
     /* Responsive */
     @media (min-width: 768px) {
       .list { grid-template-columns: repeat(2, 1fr); }
@@ -96,14 +101,14 @@
   <!-- LOGIN -->
   <div class="login-screen" id="login-screen">
     <div class="login-card">
-      <h2>🚌 Admin</h2>
+      <h2>🚌 Panel de Control</h2>
       <div class="field">
-        <label>Usuario</label>
-        <input type="text" id="login-user" placeholder="admin" value="admin" />
+        <label>Usuario / Código</label>
+        <input type="text" id="login-user" placeholder="Ingresa tu usuario" />
       </div>
       <div class="field">
         <label>Contraseña</label>
-        <input type="password" id="login-pass" placeholder="admin123" value="admin123" />
+        <input type="password" id="login-pass" placeholder="••••••••" />
       </div>
       <button class="btn-login" id="btn-login">Entrar</button>
     </div>
@@ -120,8 +125,11 @@
       </div>
       <nav class="sidebar-nav">
         <button class="nav-item active" data-view="dashboard">📊 Dashboard</button>
-        <button class="nav-item" data-view="guaguas">🚌 Guaguas</button>
-        <button class="nav-item" data-view="reservas">🎫 Reservas</button>
+        <button class="nav-item" data-view="guaguas" id="nav-guaguas">🚌 Guaguas</button>
+        <button class="nav-item" data-view="reservas" id="nav-reservas">🎫 Reservas</button>
+        <button class="nav-item" data-view="credenciales" id="nav-credenciales">👥 Credenciales</button>
+        <button class="nav-item" data-view="personalizar" id="nav-personalizar">🎨 Personalizar App</button>
+        <button class="nav-item" data-view="escaner" id="nav-escaner">📷 Escanear QR</button>
       </nav>
     </aside>
     <div class="sidebar-overlay" id="sidebar-overlay"></div>
@@ -130,9 +138,12 @@
     <header class="topbar">
       <div style="display:flex; align-items:center; gap:1rem;">
         <button class="btn-menu" id="btn-menu">☰</button>
-        <strong>Panel de Administración</strong>
+        <strong id="topbar-title">Panel de Administración</strong>
       </div>
-      <button class="btn-secondary" id="btn-logout">Salir</button>
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <span id="current-user-role" style="font-size: 0.8rem; background: rgba(255,255,255,0.2); padding: 0.2rem 0.5rem; border-radius: 4px;">Rol: -</span>
+        <button class="btn-secondary" id="btn-logout">Salir</button>
+      </div>
     </header>
 
     <!-- CONTENT -->
@@ -168,6 +179,65 @@
           <h2>Reservas</h2>
         </div>
         <div class="list" id="lista-reservas"></div>
+      </section>
+
+      <!-- CREDENCIALES -->
+      <section class="view" id="view-credenciales">
+        <div class="view-header">
+          <h2>Gestión de Usuarios y Roles</h2>
+          <button class="btn-primary" id="btn-nueva-credencial">➕ Nuevo Usuario</button>
+        </div>
+        <div class="list" id="lista-credenciales"></div>
+      </section>
+
+      <!-- PERSONALIZAR PWA -->
+      <section class="view" id="view-personalizar">
+        <div class="view-header">
+          <h2>Personalizar Interfaz (PWA)</h2>
+        </div>
+        <div class="item-card" style="max-width: 600px; margin: 0 auto;">
+          <p style="margin-bottom: 1rem; color: var(--muted);">Los cambios aquí se reflejarán en la aplicación principal de los clientes.</p>
+          
+          <div class="field">
+            <label>Nombre de la Agencia (Título)</label>
+            <input type="text" id="pwa-nombre" placeholder="Viajes Perdomo" />
+          </div>
+          
+          <div class="row-2">
+            <div class="field">
+              <label>Icono Principal (Emoji)</label>
+              <input type="text" id="pwa-icono" placeholder="🚌" maxlength="2" />
+            </div>
+            <div class="field">
+              <label>Color Principal</label>
+              <input type="color" id="pwa-color" value="#0f766e" style="height: 42px; padding: 0.2rem;" />
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Imagen de Fondo (Hero / Portada)</label>
+            <input type="file" id="pwa-imagen-file" accept="image/*" style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 8px;" />
+            <div style="margin-top: 0.5rem;">
+              <img id="pwa-imagen-preview" src="" style="width: 100%; max-height: 150px; object-fit: cover; border-radius: 8px; display: none;" />
+            </div>
+          </div>
+
+          <button class="btn-primary" id="btn-guardar-pwa" style="width: 100%; margin-top: 1rem;">Guardar Cambios en la PWA</button>
+        </div>
+      </section>
+
+      <!-- ESCÁNER QR -->
+      <section class="view" id="view-escaner">
+        <div class="view-header">
+          <h2>Escanear Código QR de Reserva</h2>
+        </div>
+        <div class="item-card" style="text-align: center;">
+          <div id="qr-reader"></div>
+          <div id="qr-resultado" class="result-card">
+            <h3 style="color: var(--success); margin-bottom: 0.5rem;">✅ Reserva Encontrada</h3>
+            <div id="qr-detalles" style="text-align: left; font-size: 0.9rem;"></div>
+          </div>
+        </div>
       </section>
 
     </main>
@@ -207,31 +277,111 @@
     </div>
   </div>
 
+  <!-- MODAL CREDENCIAL -->
+  <div class="modal-overlay" id="modal-credencial">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-credencial-titulo">Nuevo Usuario</h3>
+        <button class="btn-secondary" id="modal-credencial-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="c-id" />
+        <div class="field"><label>Nombre Completo</label><input type="text" id="c-nombre" /></div>
+        <div class="field"><label>Usuario / Código (Para login)</label><input type="text" id="c-usuario" /></div>
+        <div class="field"><label>Contraseña</label><input type="text" id="c-password" /></div>
+        <div class="field">
+          <label>Rol</label>
+          <select id="c-rol">
+            <option value="admin">Admin (Acceso Total)</option>
+            <option value="auditor">Auditor (Solo Ver)</option>
+            <option value="gestor">Gestor (Ver y editar)</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="modal-credencial-cancel" style="flex:1">Cancelar</button>
+        <button class="btn-primary" id="modal-credencial-save" style="flex:1">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIBRERÍA HTML5 QR CODE -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
   <script>
     let GUAGUAS = [];
     let RESERVAS = [];
+    let CREDENCIALES = [];
+    let CURRENT_USER = null;
+    let PWA_CONFIG = {};
+    let html5QrCode = null;
 
     const $ = (s) => document.querySelector(s);
     const $$ = (s) => document.querySelectorAll(s);
 
     /* ==========================================
-       AUTENTICACIÓN SIMPLE
+       AUTENTICACIÓN Y ROLES
        ========================================== */
-    $('#btn-login').addEventListener('click', () => {
+    $('#btn-login').addEventListener('click', async () => {
       const user = $('#login-user').value;
       const pass = $('#login-pass').value;
+      
       if (user === 'admin' && pass === 'admin123') {
-        $('#login-screen').classList.add('hidden');
-        $('#app').classList.add('visible');
-        cargarTodo();
-      } else {
-        alert('Credenciales incorrectas');
+        CURRENT_USER = { usuario: 'admin', nombre: 'Administrador Principal', rol: 'admin' };
+        entrarAlPanel();
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/credenciales');
+        if (!res.ok) throw new Error();
+        CREDENCIALES = await res.json();
+        
+        const encontrado = CREDENCIALES.find(c => c.usuario === user && c.password === pass);
+        if (encontrado) {
+          CURRENT_USER = encontrado;
+          entrarAlPanel();
+        } else {
+          alert('Credenciales incorrectas');
+        }
+      } catch (e) {
+        alert('Error conectando al servidor');
       }
     });
+
+    function entrarAlPanel() {
+      $('#login-screen').classList.add('hidden');
+      $('#app').classList.add('visible');
+      $('#current-user-role').textContent = `Rol: ${CURRENT_USER.rol.toUpperCase()}`;
+      
+      // Aplicar restricciones según el rol
+      if (CURRENT_USER.rol === 'auditor') {
+        $('#nav-guaguas').style.display = 'none';
+        $('#nav-credenciales').style.display = 'none';
+        $('#nav-personalizar').style.display = 'none';
+        $('#nav-escaner').style.display = 'none';
+      } else if (CURRENT_USER.rol === 'gestor') {
+        $('#nav-guaguas').style.display = 'flex'; // GESTOR PUEDE EDITAR GUAGUAS
+        $('#nav-credenciales').style.display = 'none';
+        $('#nav-personalizar').style.display = 'flex';
+        $('#nav-escaner').style.display = 'flex';
+      } else if (CURRENT_USER.rol === 'admin') {
+        $('#nav-guaguas').style.display = 'flex';
+        $('#nav-credenciales').style.display = 'flex';
+        $('#nav-personalizar').style.display = 'flex';
+        $('#nav-escaner').style.display = 'flex';
+      }
+
+      cargarTodo();
+    }
 
     $('#btn-logout').addEventListener('click', () => {
       $('#app').classList.remove('visible');
       $('#login-screen').classList.remove('hidden');
+      $('#login-user').value = '';
+      $('#login-pass').value = '';
+      CURRENT_USER = null;
+      if(html5QrCode) { html5QrCode.stop().catch(()=>{}); }
     });
 
     /* ==========================================
@@ -255,6 +405,13 @@
         btn.classList.add('active');
         $$('.view').forEach(v => v.classList.remove('active'));
         $(`#view-${btn.dataset.view}`).classList.add('active');
+        $('#topbar-title').textContent = btn.textContent.trim();
+        
+        // Detener cámara si cambiamos de vista
+        if (btn.dataset.view !== 'escaner' && html5QrCode) {
+          html5QrCode.stop().then(() => { html5QrCode.clear(); }).catch(()=>{});
+        }
+
         if (window.innerWidth < 768) cerrarSidebar();
       });
     });
@@ -264,24 +421,35 @@
        ========================================== */
     async function cargarTodo() {
       try {
-        const [resG, resR] = await Promise.all([
+        const [resG, resR, resC, resP] = await Promise.all([
           fetch('/api/guaguas'), 
-          fetch('/api/reservas')
+          fetch('/api/reservas'),
+          fetch('/api/credenciales'),
+          fetch('/api/config')
         ]);
         GUAGUAS = await resG.json();
         RESERVAS = await resR.json();
+        CREDENCIALES = await resC.json();
+        PWA_CONFIG = await resP.json();
         
         renderDashboard();
         renderGuaguas();
         renderReservas();
+        renderCredenciales();
+        cargarConfigPWA();
       } catch (error) {
-        alert('Error conectando al servidor');
+        console.error('Error al cargar datos', error);
       }
     }
 
     function renderDashboard() {
       const activas = GUAGUAS.filter(g => g.activa).length;
-      const pendientes = RESERVAS.filter(r => r.estado === 'pendiente').length;
+      let pendientes = RESERVAS.filter(r => r.estado === 'pendiente').length;
+      
+      if (CURRENT_USER.rol === 'gestor') {
+        pendientes = RESERVAS.filter(r => r.estado === 'pendiente' && r.gestorCodigo === CURRENT_USER.usuario).length;
+      }
+
       $('#stat-guaguas').textContent = activas;
       $('#stat-reservas').textContent = pendientes;
     }
@@ -319,12 +487,21 @@
        ========================================== */
     function renderReservas() {
       const cont = $('#lista-reservas');
-      if (RESERVAS.length === 0) {
-        cont.innerHTML = `<p>No hay reservas registradas.</p>`;
+      
+      let reservasMostrar = RESERVAS;
+      if (CURRENT_USER.rol === 'gestor') {
+        reservasMostrar = RESERVAS.filter(r => r.gestorCodigo === CURRENT_USER.usuario);
+      }
+
+      if (reservasMostrar.length === 0) {
+        cont.innerHTML = `<p>No hay reservas registradas para mostrar.</p>`;
         return;
       }
 
-      cont.innerHTML = RESERVAS.map(r => `
+      cont.innerHTML = reservasMostrar.map(r => {
+        const esAuditor = CURRENT_USER.rol === 'auditor';
+        
+        return `
         <div class="item-card">
           <div class="item-header">
             <div class="item-title">${r.nombre}</div>
@@ -332,15 +509,48 @@
           </div>
           <div style="font-size:0.9rem; margin-bottom:0.5rem;">
             Código: <strong>${r.codigo}</strong><br>
-            Total: ${r.total} ${r.moneda} | Pax: ${r.cantidad}
+            Total: ${r.total} ${r.moneda} | Pax: ${r.cantidad}<br>
+            Gestor: <strong>${r.gestorCodigo || 'N/A'}</strong>
           </div>
           <div class="item-actions">
-            <select onchange="cambiarEstadoReserva('${r.id}', this.value)" class="btn-secondary" style="flex:1">
-              <option value="pendiente" ${r.estado==='pendiente'?'selected':''}>Pendiente</option>
-              <option value="confirmada" ${r.estado==='confirmada'?'selected':''}>Confirmada</option>
-              <option value="cancelada" ${r.estado==='cancelada'?'selected':''}>Cancelada</option>
-            </select>
-            <button class="btn-danger" onclick="eliminarReserva('${r.id}')">🗑️</button>
+            ${esAuditor ? 
+              `<button class="btn-secondary" disabled style="flex:1; opacity:0.5;">Solo Lectura</button>` 
+              : 
+              `<select onchange="cambiarEstadoReserva('${r.id}', this.value)" class="btn-secondary" style="flex:1">
+                <option value="pendiente" ${r.estado==='pendiente'?'selected':''}>Pendiente</option>
+                <option value="confirmada" ${r.estado==='confirmada'?'selected':''}>Confirmada</option>
+                <option value="cancelada" ${r.estado==='cancelada'?'selected':''}>Cancelada</option>
+              </select>
+              <button class="btn-danger" onclick="eliminarReserva('${r.id}')">🗑️</button>`
+            }
+          </div>
+        </div>
+      `}).join('');
+    }
+
+    /* ==========================================
+       RENDER: CREDENCIALES
+       ========================================== */
+    function renderCredenciales() {
+      const cont = $('#lista-credenciales');
+      if (CREDENCIALES.length === 0) {
+        cont.innerHTML = `<p>No hay usuarios adicionales registrados.</p>`;
+        return;
+      }
+
+      cont.innerHTML = CREDENCIALES.map(c => `
+        <div class="item-card">
+          <div class="item-header">
+            <div class="item-title">${c.nombre}</div>
+            <span class="estado ${c.rol === 'admin' ? 'confirmada' : c.rol === 'gestor' ? 'pendiente' : 'cancelada'}" style="background: var(--dark); color: white;">${c.rol.toUpperCase()}</span>
+          </div>
+          <div style="font-size:0.9rem; color:var(--muted);">
+            Usuario: <strong>${c.usuario}</strong><br>
+            Contraseña: ${c.password}
+          </div>
+          <div class="item-actions">
+            <button class="btn-secondary" onclick="editarCredencial('${c.id}')">✏️ Editar</button>
+            <button class="btn-danger" onclick="eliminarCredencial('${c.id}')">🗑️ Borrar</button>
           </div>
         </div>
       `).join('');
@@ -395,8 +605,8 @@
         descripcion: $('#g-descripcion').value,
         imagen: $('#g-imagen').value,
         activa: true,
-        region: 'centro', // Valor por defecto para que no falle
-        duracion: '2 horas' // Valor por defecto
+        region: 'centro', 
+        duracion: '2 horas'
       };
 
       const method = id ? 'PUT' : 'POST';
@@ -409,7 +619,7 @@
           body: JSON.stringify(data)
         });
         $('#modal').classList.remove('open');
-        cargarTodo(); // Recargar datos
+        cargarTodo();
       } catch (error) {
         alert('Error al guardar');
       }
@@ -439,9 +649,178 @@
       cargarTodo();
     };
 
-    // Cerrar modal
+    /* ==========================================
+       ACCIONES: CREDENCIALES (CRUD)
+       ========================================== */
+    $('#btn-nueva-credencial').addEventListener('click', () => {
+      $('#modal-credencial-titulo').textContent = 'Nuevo Usuario';
+      $('#c-id').value = '';
+      $('#c-nombre').value = '';
+      $('#c-usuario').value = '';
+      $('#c-password').value = '';
+      $('#c-rol').value = 'gestor';
+      $('#modal-credencial').classList.add('open');
+    });
+
+    window.editarCredencial = (id) => {
+      const c = CREDENCIALES.find(x => x.id === id);
+      if (!c) return;
+      $('#modal-credencial-titulo').textContent = 'Editar Usuario';
+      $('#c-id').value = c.id;
+      $('#c-nombre').value = c.nombre;
+      $('#c-usuario').value = c.usuario;
+      $('#c-password').value = c.password;
+      $('#c-rol').value = c.rol;
+      $('#modal-credencial').classList.add('open');
+    };
+
+    $('#modal-credencial-save').addEventListener('click', async () => {
+      const id = $('#c-id').value;
+      const data = {
+        nombre: $('#c-nombre').value,
+        usuario: $('#c-usuario').value,
+        password: $('#c-password').value,
+        rol: $('#c-rol').value
+      };
+
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? `/api/credenciales/${id}` : '/api/credenciales';
+
+      try {
+        await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        $('#modal-credencial').classList.remove('open');
+        cargarTodo();
+      } catch (error) {
+        alert('Error al guardar la credencial');
+      }
+    });
+
+    window.eliminarCredencial = async (id) => {
+      if (!confirm('¿Seguro que deseas eliminar este usuario?')) return;
+      await fetch(`/api/credenciales/${id}`, { method: 'DELETE' });
+      cargarTodo();
+    };
+
+    /* ==========================================
+       ACCIONES: PERSONALIZAR PWA
+       ========================================== */
+    function cargarConfigPWA() {
+      $('#pwa-nombre').value = PWA_CONFIG.nombreApp || 'Viajes Perdomo';
+      $('#pwa-icono').value = PWA_CONFIG.icono || '🚌';
+      $('#pwa-color').value = PWA_CONFIG.color || '#0f766e';
+      
+      if (PWA_CONFIG.imagenHero) {
+        $('#pwa-imagen-preview').src = PWA_CONFIG.imagenHero;
+        $('#pwa-imagen-preview').style.display = 'block';
+      } else {
+        $('#pwa-imagen-preview').style.display = 'none';
+      }
+    }
+
+    // Convertir imagen a Base64 al seleccionarla
+    $('#pwa-imagen-file').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        $('#pwa-imagen-preview').src = event.target.result;
+        $('#pwa-imagen-preview').style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    });
+
+    $('#btn-guardar-pwa').addEventListener('click', async () => {
+      const nuevaConfig = {
+        nombreApp: $('#pwa-nombre').value,
+        icono: $('#pwa-icono').value,
+        color: $('#pwa-color').value,
+        imagenHero: $('#pwa-imagen-preview').src || PWA_CONFIG.imagenHero // Mantiene la anterior si no se cambió
+      };
+
+      try {
+        await fetch('/api/config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nuevaConfig)
+        });
+        alert('Configuración guardada. Los clientes la verán al recargar.');
+        PWA_CONFIG = nuevaConfig;
+      } catch (error) {
+        alert('Error al guardar la configuración');
+      }
+    });
+
+    /* ==========================================
+       ACCIONES: ESCÁNER QR
+       ========================================== */
+    function iniciarEscaner() {
+      if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("qr-reader");
+      }
+
+      html5QrCode.start(
+        { facingMode: "environment" }, 
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          // Éxito al escanear
+          html5QrCode.stop().then(() => { html5QrCode.clear(); }).catch(()=>{});
+          buscarReservaPorCodigo(decodedText);
+        },
+        (errorMessage) => {
+          // Ignorar errores de escaneo continuo
+        }
+      ).catch((err) => {
+        alert("Error al acceder a la cámara. Asegúrate de dar permisos.");
+        console.error(err);
+      });
+    }
+
+    async function buscarReservaPorCodigo(codigo) {
+      // Limpiamos el código por si trae texto extra (ej: "VP-XXXX")
+      const codigoLimpio = codigo.trim().toUpperCase();
+      const reserva = RESERVAS.find(r => r.codigo === codigoLimpio);
+
+      const resDiv = $('#qr-resultado');
+      const detallesDiv = $('#qr-detalles');
+
+      if (reserva) {
+        detallesDiv.innerHTML = `
+          <p><strong>Código:</strong> ${reserva.codigo}</p>
+          <p><strong>Pasajero:</strong> ${reserva.nombre}</p>
+          <p><strong>CI:</strong> ${reserva.ci}</p>
+          <p><strong>Cantidad:</strong> ${reserva.cantidad} pax</p>
+          <p><strong>Fecha Viaje:</strong> ${reserva.fechaViaje}</p>
+          <p><strong>Estado:</strong> <span class="estado ${reserva.estado}">${reserva.estado}</span></p>
+          <button class="btn-primary" style="margin-top: 1rem; width: 100%;" onclick="cambiarEstadoReserva('${reserva.id}', 'confirmada')">Marcar como Confirmada</button>
+        `;
+        resDiv.classList.add('show');
+      } else {
+        detallesDiv.innerHTML = `<p style="color: red;">No se encontró ninguna reserva con el código: <strong>${codigoLimpio}</strong></p>`;
+        resDiv.classList.add('show');
+      }
+    }
+
+    // Iniciar cámara solo cuando se entra a la vista de escanear
+    $$('.nav-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.dataset.view === 'escaner') {
+          setTimeout(() => {
+            $('#qr-resultado').classList.remove('show');
+            iniciarEscaner();
+          }, 300);
+        }
+      });
+    });
+
+    // Cerrar modales
     $('#modal-close').addEventListener('click', () => $('#modal').classList.remove('open'));
     $('#modal-cancel').addEventListener('click', () => $('#modal').classList.remove('open'));
+    $('#modal-credencial-close').addEventListener('click', () => $('#modal-credencial').classList.remove('open'));
+    $('#modal-credencial-cancel').addEventListener('click', () => $('#modal-credencial').classList.remove('open'));
   </script>
 </body>
 </html>
