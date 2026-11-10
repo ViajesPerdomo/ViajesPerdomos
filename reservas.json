@@ -13,20 +13,5 @@
     "moneda": "CUP",
     "estado": "confirmada",
     "createdAt": "2026-11-10T02:00:22.183Z"
-  },
-  {
-    "nombre": "Kendry ",
-    "email": "dgrisel940@gmail.com",
-    "ci": "77",
-    "telefono": "33",
-    "guaguaId": "1",
-    "fechaViaje": "2026-11-09",
-    "cantidad": 1,
-    "id": "1794276129918",
-    "codigo": "VP-36HDHI",
-    "total": 8500,
-    "moneda": "CUP",
-    "estado": "pendiente",
-    "createdAt": "2026-11-10T02:02:09.918Z"
   }
 ]
