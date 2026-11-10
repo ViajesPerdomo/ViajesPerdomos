@@ -14,20 +14,13 @@
     }
     body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
 
-    #splash-screen {
-      position: fixed; inset: 0; background: var(--primary-dark); z-index: 9999;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      color: white; transition: opacity 0.5s ease;
-    }
+    #splash-screen { position: fixed; inset: 0; background: var(--primary-dark); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; transition: opacity 0.5s ease; }
     #splash-screen.hidden { opacity: 0; pointer-events: none; }
     .splash-logo { font-size: 4rem; animation: bounce 1s infinite alternate; margin-bottom: 1rem; }
     .splash-title { font-size: 1.8rem; font-weight: 800; letter-spacing: 1px; }
     @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-15px); } }
 
-    #login-screen {
-      position: fixed; inset: 0; background: var(--bg); z-index: 9000;
-      display: none; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem;
-    }
+    #login-screen { position: fixed; inset: 0; background: var(--bg); z-index: 9000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; }
     #login-screen.active { display: flex; }
     .login-card { background: white; border-radius: var(--radius); padding: 2rem; width: 100%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
     .login-card h2 { text-align: center; color: var(--primary); margin-bottom: 1.5rem; }
@@ -41,12 +34,7 @@
     #main-app { display: none; flex: 1; flex-direction: row; position: relative; }
     #main-app.active { display: flex; }
 
-    #sidebar {
-      position: fixed; top: 0; left: 0; bottom: 0; width: 260px; background: var(--primary-dark); color: white;
-      z-index: 5000; display: flex; flex-direction: column; transition: transform 0.3s ease;
-      transform: translateX(-100%);
-      box-shadow: 2px 0 10px rgba(0,0,0,0.2);
-    }
+    #sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 260px; background: var(--primary-dark); color: white; z-index: 5000; display: flex; flex-direction: column; transition: transform 0.3s ease; transform: translateX(-100%); box-shadow: 2px 0 10px rgba(0,0,0,0.2); }
     #sidebar.open { transform: translateX(0); }
     .sidebar-header { padding: 1.5rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 0.5rem; }
     .sidebar-header h2 { font-size: 1.2rem; }
@@ -98,6 +86,7 @@
     .status-pendiente { background: var(--accent); }
     .status-cancelada { background: var(--danger); }
     .status-confirmada { background: var(--success); }
+    .status-completada { background: #3b82f6; }
     .reserva-body p { font-size: 0.9rem; color: var(--muted); margin-bottom: 0.3rem; }
     .btn-cancelar { background: transparent; color: var(--danger); border: 1px solid var(--danger); padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; margin-top: 0.5rem; font-size: 0.8rem;}
 
@@ -114,6 +103,9 @@
     .btn-confirm { background: var(--success); color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: bold; cursor: pointer; }
     .toast { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--success); color: white; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: 700; opacity: 0; transition: 0.3s; z-index: 10000; }
     .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* NUEVO: Estilos para el Modal QR */
+    .qr-modal-img { display: block; margin: 0 auto; width: 250px; height: 250px; }
 
     @media (min-width: 768px) {
       #sidebar { transform: translateX(0); }
@@ -232,9 +224,7 @@
           <button class="chip" data-filter="oeste">🛣️ Oeste</button>
           <button class="chip" data-filter="especial">⭐ Especiales</button>
         </div>
-        <div class="trips-grid" id="trips-grid">
-          <!-- Aquí se mostrará el mensaje de carga -->
-        </div>
+        <div class="trips-grid" id="trips-grid"></div>
       </section>
 
       <section id="view-perfil" class="view">
@@ -311,6 +301,7 @@
     </div>
   </div>
 
+  <!-- MODAL RESERVA -->
   <div class="modal-overlay" id="modal">
     <div class="modal">
       <div class="modal-header"><h3 id="modal-titulo">Reservar</h3><button id="modal-close" style="background:none;border:none;color:white;cursor:pointer;">✕</button></div>
@@ -324,6 +315,18 @@
         <div class="input-group"><label>Fecha del viaje</label><input type="date" id="res-fecha" /></div>
         <div class="input-group"><label>Cantidad Pasajeros</label><input type="number" id="res-cantidad" min="1" value="1" /></div>
         <button class="btn-confirm" id="btn-confirmar">✅ Confirmar Reserva</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NUEVO: MODAL QR -->
+  <div class="modal-overlay" id="modal-qr">
+    <div class="modal">
+      <div class="modal-header"><h3>Código QR de tu Reserva</h3><button id="modal-qr-close" style="background:none;border:none;color:white;cursor:pointer;">✕</button></div>
+      <div class="modal-body" style="text-align: center;">
+        <p style="margin-bottom: 1rem; color: var(--muted);">Muestra este código al gestor al abordar la guagua.</p>
+        <img id="qr-image" class="qr-modal-img" src="" alt="QR de Reserva" />
+        <p style="margin-top: 1rem; font-weight: bold;" id="qr-text-codigo"></p>
       </div>
     </div>
   </div>
@@ -351,28 +354,22 @@
     async function cargarGestoresRegistro() {
       try {
         const res = await fetch('/api/gestores');
-        if (!res.ok) throw new Error('Error al cargar gestores');
+        if (!res.ok) throw new Error();
         const gestores = await res.json();
-        
         const select = $('#auth-gestor');
         select.innerHTML = '<option value="">-- Seleccione un gestor --</option>';
-        
         if (gestores.length === 0) {
-          select.innerHTML += '<option value="" disabled>No hay gestores registrados aún</option>';
+          select.innerHTML += '<option value="" disabled>No hay gestores disponibles</option>';
         } else {
-          gestores.forEach(g => {
-            select.innerHTML += `<option value="${g.usuario}">${g.nombre} (${g.usuario})</option>`;
-          });
+          gestores.forEach(g => select.innerHTML += `<option value="${g.usuario}">${g.nombre} (${g.usuario})</option>`);
         }
       } catch (error) {
-        console.error(error);
         $('#auth-gestor').innerHTML = '<option value="">Error al cargar gestores</option>';
       }
     }
 
     window.addEventListener('DOMContentLoaded', () => {
       cargarGestoresRegistro();
-      
       setTimeout(() => {
         const splash = $('#splash-screen');
         if (splash) {
@@ -387,9 +384,7 @@
           } else {
             $('#login-screen').classList.add('active');
           }
-        } catch (e) {
-          $('#login-screen').classList.add('active');
-        }
+        } catch (e) { $('#login-screen').classList.add('active'); }
       }, 2000);
     });
 
@@ -417,7 +412,6 @@
       const gestorCodigo = $('#auth-gestor').value;
 
       if (!email || !password) return mostrarToast('Completa todos los campos', 'error');
-      
       if (isRegisterMode) {
         if (!nombre) return mostrarToast('El nombre es obligatorio', 'error');
         if (!gestorCodigo) return mostrarToast('Debes seleccionar un gestor', 'error');
@@ -427,22 +421,14 @@
       const payload = isRegisterMode ? { nombre, email, password, gestorCodigo } : { email, password };
 
       try {
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        
+        const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         let data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Error en la petición');
-
+        if (!res.ok) throw new Error(data.error || 'Error');
         USER = data.usuario;
         localStorage.setItem('vp_user', JSON.stringify(USER));
         mostrarToast(`Bienvenido, ${USER.nombre}`);
         iniciarApp();
-      } catch (error) {
-        mostrarToast(error.message, 'error');
-      }
+      } catch (error) { mostrarToast(error.message, 'error'); }
     });
 
     $('#btn-logout-sidebar').addEventListener('click', () => {
@@ -459,7 +445,6 @@
       $('#sidebar').classList.add('open');
       $('#sidebar-overlay').classList.add('active');
     });
-
     $('#sidebar-overlay').addEventListener('click', () => {
       $('#sidebar').classList.remove('open');
       $('#sidebar-overlay').classList.remove('active');
@@ -470,16 +455,13 @@
         document.querySelectorAll('.sidebar-menu li').forEach(i => i.classList.remove('active'));
         item.classList.add('active');
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-        
         const targetId = item.dataset.target;
         $('#' + targetId).classList.add('active');
         $('#header-title').textContent = item.textContent.replace(/[^\w\sáéíóúÁÉÍÓÚñÑ]/gi, '').trim();
-
         if (window.innerWidth < 768) {
           $('#sidebar').classList.remove('open');
           $('#sidebar-overlay').classList.remove('active');
         }
-
         if (targetId === 'view-reservas') cargarMisReservas();
         if (targetId === 'view-perfil') {
           $('#perfil-nombre').value = USER.nombre;
@@ -492,11 +474,7 @@
       $('#login-screen').classList.remove('active');
       $('#main-app').classList.add('active');
       $('#user-display').textContent = `Hola, ${USER.nombre}`;
-      
-      // Mostrar mensaje de carga inicial
-      $('#trips-grid').innerHTML = '<p style="grid-column:1/-1; text-align:center;">Cargando guaguas, por favor espera...</p>';
-      
-      // Pequeño retraso para asegurar que el servidor esté listo
+      $('#trips-grid').innerHTML = '<p style="grid-column:1/-1; text-align:center;">Cargando guaguas...</p>';
       setTimeout(cargarGuaguas, 500);
     }
 
@@ -507,8 +485,7 @@
         GUAGUAS = await res.json();
         renderGuaguas();
       } catch (error) {
-        $('#trips-grid').innerHTML = '<p style="grid-column:1/-1; text-align:center; color:red;">Error al cargar las guaguas. Revisa tu conexión o recarga la página.</p>';
-        mostrarToast('Error cargando guaguas.', 'error');
+        $('#trips-grid').innerHTML = '<p style="grid-column:1/-1; text-align:center; color:red;">Error al cargar.</p>';
       }
     }
 
@@ -517,7 +494,7 @@
       contenedor.innerHTML = '<p>Cargando reservas...</p>';
       try {
         const res = await fetch('/api/reservas');
-        if (!res.ok) throw new Error('Error al cargar reservas');
+        if (!res.ok) throw new Error();
         todasLasReservas = await res.json();
         const misReservas = todasLasReservas.filter(r => r.email === USER.email);
 
@@ -537,7 +514,14 @@
               <p><strong>Fecha de viaje:</strong> ${r.fechaViaje}</p>
               <p><strong>Pasajeros:</strong> ${r.cantidad}</p>
               <p><strong>Total:</strong> ${r.total} ${r.moneda}</p>
-              ${r.estado !== 'cancelada' ? `<button class="btn-cancelar" onclick="cancelarReserva('${r.id}')">Cancelar Reserva</button>` : ''}
+              <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                ${r.estado !== 'cancelada' && r.estado !== 'completada' ? 
+                  `<button class="btn-cancelar" onclick="cancelarReserva('${r.id}')" style="flex:1;">Cancelar</button>` : 
+                  ''}
+                ${r.estado !== 'cancelada' ? 
+                  `<button class="btn-main" style="flex:1; margin-top:0; padding:0.4rem; font-size:0.8rem;" onclick="mostrarQR('${r.codigo}')">📱 Mostrar QR</button>` : 
+                  ''}
+              </div>
             </div>
           </div>
         `).join('');
@@ -546,21 +530,26 @@
       }
     }
 
+    // NUEVO: Función para mostrar el QR
+    window.mostrarQR = (codigo) => {
+      // Usamos una API pública para generar el QR (evita cargar librerías pesadas)
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(codigo)}`;
+      $('#qr-image').src = qrUrl;
+      $('#qr-text-codigo').textContent = `Código: ${codigo}`;
+      $('#modal-qr').classList.add('open');
+    };
+
+    $('#modal-qr-close').addEventListener('click', () => $('#modal-qr').classList.remove('open'));
+
     window.cancelarReserva = async (id) => {
       if (!confirm('¿Estás seguro de que deseas cancelar esta reserva?')) return;
       try {
-        const res = await fetch(`/api/reservas/${id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ estado: 'cancelada' })
-        });
-        if (!res.ok) throw new Error('Error al cancelar');
-        mostrarToast('Reserva cancelada correctamente');
+        const res = await fetch(`/api/reservas/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado: 'cancelada' }) });
+        if (!res.ok) throw new Error();
+        mostrarToast('Reserva cancelada');
         cargarMisReservas();
         cargarGuaguas();
-      } catch (error) {
-        mostrarToast('No se pudo cancelar la reserva', 'error');
-      }
+      } catch (error) { mostrarToast('No se pudo cancelar', 'error'); }
     };
 
     function renderGuaguas() {
@@ -568,7 +557,6 @@
       const filtro = document.querySelector('.chip.active').dataset.filter;
       const origen = $('#origen').value;
       const destino = $('#destino').value;
-
       let lista = GUAGUAS.filter(v => {
         if (!v.activa) return false;
         if (filtro !== 'all' && v.region.toLowerCase() !== filtro) return false;
@@ -576,12 +564,10 @@
         if (destino && v.destino !== destino) return false;
         return true;
       });
-
       if (lista.length === 0) {
         grid.innerHTML = `<p style="grid-column:1/-1; text-align:center; padding:2rem;">No hay guaguas disponibles.</p>`;
         return;
       }
-
       grid.innerHTML = lista.map(v => `
         <article class="trip-card">
           <div class="trip-img" style="background-image:url('${v.imagen}')">
@@ -605,7 +591,6 @@
     window.abrirModal = (id) => {
       viajeSeleccionado = GUAGUAS.find(v => v.id === id);
       if(!viajeSeleccionado) return;
-
       $('#modal-titulo').textContent = `${viajeSeleccionado.origen} → ${viajeSeleccionado.destino}`;
       $('#modal-summary').innerHTML = `<p><strong>🚌 ${viajeSeleccionado.unidad}</strong> | ${viajeSeleccionado.precio} ${viajeSeleccionado.moneda} c/u</p>`;
       $('#res-cantidad').max = viajeSeleccionado.asientosDisp;
@@ -619,33 +604,18 @@
       const telefono = $('#res-telefono').value;
       const fechaViaje = $('#res-fecha').value;
       const cantidad = parseInt($('#res-cantidad').value);
-
       if (!ci || !telefono || !fechaViaje) return mostrarToast('Completa los datos', 'error');
-
       try {
         const res = await fetch('/api/reservas', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            nombre: USER.nombre,
-            email: USER.email,
-            gestorCodigo: USER.gestorCodigo,
-            ci,
-            telefono,
-            guaguaId: viajeSeleccionado.id,
-            fechaViaje,
-            cantidad
-          })
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre: USER.nombre, email: USER.email, gestorCodigo: USER.gestorCodigo, ci, telefono, guaguaId: viajeSeleccionado.id, fechaViaje, cantidad })
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-
         mostrarToast(`¡Reserva exitosa! Código: ${data.codigo}`);
         $('#modal').classList.remove('open');
         cargarGuaguas(); 
-      } catch (error) {
-        mostrarToast(error.message, 'error');
-      }
+      } catch (error) { mostrarToast(error.message, 'error'); }
     });
 
     $('#filtros').addEventListener('click', (e) => {
