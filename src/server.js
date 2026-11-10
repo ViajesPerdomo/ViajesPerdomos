@@ -19,12 +19,14 @@ const GITHUB_OWNER = process.env.GITHUB_OWNER;
 const GITHUB_REPO = process.env.GITHUB_REPO;
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 
-if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
-  console.error("❌ FALTAN VARIABLES DE ENTORNO EN RENDER:");
-  console.error(`GITHUB_TOKEN: ${GITHUB_TOKEN ? 'OK' : 'FALTA'}`);
-  console.error(`GITHUB_OWNER: ${GITHUB_OWNER ? 'OK' : 'FALTA'}`);
-  console.error(`GITHUB_REPO: ${GITHUB_REPO ? 'OK' : 'FALTA'}`);
-}
+// CACHÉ EN MEMORIA PARA EVITAR LENTITUD
+const cache = {
+  guaguas: null,
+  reservas: null,
+  usuarios: null,
+  credenciales: null,
+  config: null
+};
 
 const githubApi = async (endpoint, options = {}) => {
   const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${endpoint}`;
@@ -48,16 +50,27 @@ const githubApi = async (endpoint, options = {}) => {
   return res;
 };
 
-async function leerJSON(nombreArchivo) {
+async function leerJSON(nombreArchivo, forzarRecarga = false) {
   try {
+    // Si está en caché y no se fuerza recarga, devolverlo al instante
+    if (cache[nombreArchivo] && !forzarRecarga) {
+      return cache[nombreArchivo];
+    }
+
     const res = await githubApi(`${nombreArchivo}.json?ref=${GITHUB_BRANCH}`);
     if (res.status === 404) return null; 
     
     const data = await res.json();
     const contenido = Buffer.from(data.content, 'base64').toString('utf8');
-    return { data: JSON.parse(contenido), sha: data.sha };
+    const resultado = { data: JSON.parse(contenido), sha: data.sha };
+    
+    // Guardar en caché
+    cache[nombreArchivo] = resultado;
+    return resultado;
   } catch (error) {
     console.error(`❌ Error leyendo ${nombreArchivo}:`, error.message);
+    // Si falla GitHub, intentar devolver lo que haya en caché (si existe)
+    if (cache[nombreArchivo]) return cache[nombreArchivo];
     throw error; 
   }
 }
@@ -81,6 +94,12 @@ async function guardarJSON(nombreArchivo, contenidoJSON, shaExistente = null) {
       const err = await res.json();
       throw new Error(err.message || `Falló el guardado de ${nombreArchivo}`);
     }
+
+    // Actualizar la caché con los nuevos datos
+    // Hacemos una lectura rápida para obtener el nuevo SHA
+    const nuevoContenido = await leerJSON(nombreArchivo, true);
+    cache[nombreArchivo] = nuevoContenido;
+
     console.log(`✅ ${nombreArchivo}.json guardado en GitHub`);
     return true;
   } catch (error) {
@@ -97,7 +116,7 @@ async function inicializarDatos() {
     console.log("🔄 Iniciando comprobación de datos en GitHub...");
 
     let guaguasData = null;
-    try { guaguasData = await leerJSON('guaguas'); } catch (e) { return; }
+    try { guaguasData = await leerJSON('guaguas'); } catch (e) { console.log("Esperando a GitHub..."); }
 
     if (!guaguasData) {
       console.log('🌱 Creando guaguas.json por primera vez...');
@@ -109,15 +128,15 @@ async function inicializarDatos() {
     }
 
     let reservasData = null;
-    try { reservasData = await leerJSON('reservas'); } catch(e) { return; }
+    try { reservasData = await leerJSON('reservas'); } catch(e) {}
     if (!reservasData) await guardarJSON('reservas', []);
 
     let usuariosData = null;
-    try { usuariosData = await leerJSON('usuarios'); } catch(e) { return; }
+    try { usuariosData = await leerJSON('usuarios'); } catch(e) {}
     if (!usuariosData) await guardarJSON('usuarios', []);
 
     let configData = null;
-    try { configData = await leerJSON('config'); } catch(e) { return; }
+    try { configData = await leerJSON('config'); } catch(e) {}
     if (!configData) {
       console.log('🌱 Creando config.json...');
       await guardarJSON('config', { nombreApp: 'Viajes Perdomo', icono: '🚌', color: '#0f766e', imagenHero: '' });
@@ -130,22 +149,13 @@ async function inicializarDatos() {
 }
 
 // ==========================================
-// ENDPOINTS: USUARIOS Y LOGIN (CLIENTES)
+// ENDPOINTS
 // ==========================================
-app.get('/api/usuarios', async (req, res) => {
-  const data = await leerJSON('usuarios');
-  res.json(data ? data.data : []);
-});
-
-// NUEVO ENDPOINT: Obtener lista pública de gestores
 app.get('/api/gestores', async (req, res) => {
   try {
     const data = await leerJSON('credenciales');
     const credenciales = data ? data.data : [];
-    // Filtramos solo los que tienen rol de gestor
-    const gestores = credenciales
-      .filter(c => c.rol === 'gestor')
-      .map(c => ({ usuario: c.usuario, nombre: c.nombre }));
+    const gestores = credenciales.filter(c => c.rol === 'gestor').map(c => ({ usuario: c.usuario, nombre: c.nombre }));
     res.json(gestores);
   } catch (error) {
     res.status(500).json({ error: 'Error al leer gestores' });
@@ -155,35 +165,20 @@ app.get('/api/gestores', async (req, res) => {
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { nombre, email, password, gestorCodigo } = req.body;
-    
-    // VALIDACIÓN: El gestor es obligatorio en el registro
-    if (!gestorCodigo) {
-      return res.status(400).json({ error: 'Debes seleccionar un gestor para registrarte' });
-    }
+    if (!gestorCodigo) return res.status(400).json({ error: 'Debes seleccionar un gestor para registrarte' });
 
     const data = await leerJSON('usuarios');
     const usuarios = data ? data.data : [];
     const sha = data ? data.sha : null;
 
-    if (usuarios.find(u => u.email === email)) {
-      return res.status(400).json({ error: 'El correo ya está registrado' });
-    }
+    if (usuarios.find(u => u.email === email)) return res.status(400).json({ error: 'El correo ya está registrado' });
 
-    // Guardamos el usuario con el gestor que lo captó
-    const nuevoUsuario = { 
-      id: Date.now().toString(), 
-      nombre, 
-      email, 
-      password,
-      gestorCodigo // <-- Se guarda el gestor en el perfil del usuario
-    };
-    
+    const nuevoUsuario = { id: Date.now().toString(), nombre, email, password, gestorCodigo };
     usuarios.push(nuevoUsuario);
     await guardarJSON('usuarios', usuarios, sha);
     
     res.status(201).json({ mensaje: 'Usuario creado', usuario: nuevoUsuario });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ error: 'Error interno al registrar' });
   }
 });
@@ -193,33 +188,30 @@ app.post('/api/auth/login', async (req, res) => {
     const { email, password } = req.body;
     const data = await leerJSON('usuarios');
     const usuarios = data ? data.data : [];
-
     const usuario = usuarios.find(u => u.email === email && u.password === password);
     if (!usuario) return res.status(401).json({ error: 'Credenciales incorrectas' });
-
     res.json({ mensaje: 'Login exitoso', usuario });
   } catch (error) {
     res.status(500).json({ error: 'Error interno al iniciar sesión' });
   }
 });
 
-// ==========================================
-// ENDPOINTS: GUAGUAS
-// ==========================================
 app.get('/api/guaguas', async (req, res) => {
-  const data = await leerJSON('guaguas');
-  res.json(data ? data.data : []);
+  try {
+    const data = await leerJSON('guaguas');
+    res.json(data ? data.data : []);
+  } catch (error) {
+    res.status(500).json({ error: 'Error cargando guaguas' });
+  }
 });
 
 app.post('/api/guaguas', async (req, res) => {
   try {
-    const actual = await leerJSON('guaguas');
+    const actual = await leerJSON('guaguas', true); // Forzar recarga para tener SHA actualizado
     const lista = actual ? actual.data : [];
     const sha = actual ? actual.sha : null;
-    
     const nueva = { ...req.body, id: Date.now().toString() };
     lista.push(nueva);
-    
     await guardarJSON('guaguas', lista, sha);
     res.status(201).json(nueva);
   } catch (error) {
@@ -229,13 +221,11 @@ app.post('/api/guaguas', async (req, res) => {
 
 app.put('/api/guaguas/:id', async (req, res) => {
   try {
-    const actual = await leerJSON('guaguas');
+    const actual = await leerJSON('guaguas', true);
     const lista = actual ? actual.data : [];
     const sha = actual ? actual.sha : null;
-    
     const index = lista.findIndex(g => g.id === req.params.id);
     if (index === -1) return res.status(404).json({ error: 'No encontrada' });
-    
     lista[index] = { ...lista[index], ...req.body };
     await guardarJSON('guaguas', lista, sha);
     res.json(lista[index]);
@@ -246,10 +236,9 @@ app.put('/api/guaguas/:id', async (req, res) => {
 
 app.delete('/api/guaguas/:id', async (req, res) => {
   try {
-    const actual = await leerJSON('guaguas');
+    const actual = await leerJSON('guaguas', true);
     const lista = actual ? actual.data.filter(g => g.id !== req.params.id) : [];
     const sha = actual ? actual.sha : null;
-    
     await guardarJSON('guaguas', lista, sha);
     res.json({ ok: true });
   } catch (error) {
@@ -257,18 +246,19 @@ app.delete('/api/guaguas/:id', async (req, res) => {
   }
 });
 
-// ==========================================
-// ENDPOINTS: RESERVAS
-// ==========================================
 app.get('/api/reservas', async (req, res) => {
-  const data = await leerJSON('reservas');
-  res.json(data ? data.data : []);
+  try {
+    const data = await leerJSON('reservas');
+    res.json(data ? data.data : []);
+  } catch (error) {
+    res.status(500).json({ error: 'Error cargando reservas' });
+  }
 });
 
 app.post('/api/reservas', async (req, res) => {
   try {
     const { guaguaId, cantidad } = req.body;
-    const guaguasData = await leerJSON('guaguas');
+    const guaguasData = await leerJSON('guaguas', true); // Forzar recarga
     if (!guaguasData) return res.status(500).json({ error: 'Error leyendo guaguas' });
     
     const guaguas = guaguasData.data;
@@ -278,7 +268,7 @@ app.post('/api/reservas', async (req, res) => {
     if (gIndex === -1) return res.status(404).json({ error: 'Guagua no encontrada' });
     if (guaguas[gIndex].asientosDisp < cantidad) return res.status(400).json({ error: 'Sin asientos disponibles' });
 
-    const reservasData = await leerJSON('reservas');
+    const reservasData = await leerJSON('reservas', true);
     const reservas = reservasData ? reservasData.data : [];
     const shaReservas = reservasData ? reservasData.sha : null;
     
@@ -292,7 +282,6 @@ app.post('/api/reservas', async (req, res) => {
       createdAt: new Date().toISOString()
     };
     reservas.push(nuevaReserva);
-    
     guaguas[gIndex].asientosDisp -= cantidad;
 
     await guardarJSON('reservas', reservas, shaReservas);
@@ -307,7 +296,7 @@ app.post('/api/reservas', async (req, res) => {
 
 app.put('/api/reservas/:id', async (req, res) => {
   try {
-    const reservasData = await leerJSON('reservas');
+    const reservasData = await leerJSON('reservas', true);
     if (!reservasData) return res.status(500).json({ error: 'Error leyendo reservas' });
     
     const reservas = reservasData.data;
@@ -316,7 +305,7 @@ app.put('/api/reservas/:id', async (req, res) => {
     if (index === -1) return res.status(404).json({ error: 'No encontrada' });
 
     if (req.body.estado === 'cancelada' && reservas[index].estado !== 'cancelada') {
-      const guaguasData = await leerJSON('guaguas');
+      const guaguasData = await leerJSON('guaguas', true);
       if (guaguasData) {
         const guaguas = guaguasData.data;
         const gIndex = guaguas.findIndex(g => g.id === reservas[index].guaguaId);
@@ -337,9 +326,8 @@ app.put('/api/reservas/:id', async (req, res) => {
 
 app.delete('/api/reservas/:id', async (req, res) => {
   try {
-    const reservasData = await leerJSON('reservas');
+    const reservasData = await leerJSON('reservas', true);
     if (!reservasData) return res.status(500).json({ error: 'Error leyendo reservas' });
-    
     const reservas = reservasData.data.filter(r => r.id !== req.params.id);
     await guardarJSON('reservas', reservas, reservasData.sha);
     res.json({ ok: true });
@@ -348,9 +336,6 @@ app.delete('/api/reservas/:id', async (req, res) => {
   }
 });
 
-// ==========================================
-// ENDPOINTS: CREDENCIALES (ADMIN)
-// ==========================================
 app.get('/api/credenciales', async (req, res) => {
   try {
     const data = await leerJSON('credenciales');
@@ -362,13 +347,11 @@ app.get('/api/credenciales', async (req, res) => {
 
 app.post('/api/credenciales', async (req, res) => {
   try {
-    const actual = await leerJSON('credenciales');
+    const actual = await leerJSON('credenciales', true);
     const lista = actual ? actual.data : [];
     const sha = actual ? actual.sha : null;
-    
     const nueva = { ...req.body, id: Date.now().toString() };
     lista.push(nueva);
-    
     await guardarJSON('credenciales', lista, sha);
     res.status(201).json(nueva);
   } catch (error) {
@@ -378,13 +361,11 @@ app.post('/api/credenciales', async (req, res) => {
 
 app.put('/api/credenciales/:id', async (req, res) => {
   try {
-    const actual = await leerJSON('credenciales');
+    const actual = await leerJSON('credenciales', true);
     const lista = actual ? actual.data : [];
     const sha = actual ? actual.sha : null;
-    
     const index = lista.findIndex(c => c.id === req.params.id);
     if (index === -1) return res.status(404).json({ error: 'Credencial no encontrada' });
-    
     lista[index] = { ...lista[index], ...req.body };
     await guardarJSON('credenciales', lista, sha);
     res.json(lista[index]);
@@ -395,10 +376,9 @@ app.put('/api/credenciales/:id', async (req, res) => {
 
 app.delete('/api/credenciales/:id', async (req, res) => {
   try {
-    const actual = await leerJSON('credenciales');
+    const actual = await leerJSON('credenciales', true);
     const lista = actual ? actual.data.filter(c => c.id !== req.params.id) : [];
     const sha = actual ? actual.sha : null;
-    
     await guardarJSON('credenciales', lista, sha);
     res.json({ ok: true });
   } catch (error) {
@@ -406,9 +386,6 @@ app.delete('/api/credenciales/:id', async (req, res) => {
   }
 });
 
-// ==========================================
-// NUEVOS ENDPOINTS: CONFIGURACIÓN PWA
-// ==========================================
 app.get('/api/config', async (req, res) => {
   try {
     const data = await leerJSON('config');
@@ -420,9 +397,8 @@ app.get('/api/config', async (req, res) => {
 
 app.put('/api/config', async (req, res) => {
   try {
-    const actual = await leerJSON('config');
+    const actual = await leerJSON('config', true);
     const sha = actual ? actual.sha : null;
-    
     await guardarJSON('config', req.body, sha);
     res.json({ mensaje: 'Configuración actualizada', config: req.body });
   } catch (error) {
