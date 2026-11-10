@@ -14,7 +14,6 @@
     }
     body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
 
-    /* --- SPLASH SCREEN --- */
     #splash-screen {
       position: fixed; inset: 0; background: var(--primary-dark); z-index: 9999;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -25,7 +24,6 @@
     .splash-title { font-size: 1.8rem; font-weight: 800; letter-spacing: 1px; }
     @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-15px); } }
 
-    /* --- LOGIN SCREEN --- */
     #login-screen {
       position: fixed; inset: 0; background: var(--bg); z-index: 9000;
       display: none; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem;
@@ -35,20 +33,18 @@
     .login-card h2 { text-align: center; color: var(--primary); margin-bottom: 1.5rem; }
     .input-group { margin-bottom: 1rem; }
     .input-group label { display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.3rem; color: var(--muted); }
-    .input-group input, .input-group textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; font-family: inherit; }
+    .input-group input, .input-group textarea, .input-group select { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; font-family: inherit; }
     .btn-main { width: 100%; background: var(--primary); color: white; border: none; padding: 0.8rem; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 0.5rem; }
     .btn-google { width: 100%; background: white; color: #333; border: 1px solid #ccc; padding: 0.8rem; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
     .toggle-auth { text-align: center; margin-top: 1rem; font-size: 0.9rem; color: var(--primary); cursor: pointer; text-decoration: underline; }
 
-    /* --- APP LAYOUT & SIDEBAR --- */
     #main-app { display: none; flex: 1; flex-direction: row; position: relative; }
     #main-app.active { display: flex; }
 
-    /* Sidebar */
     #sidebar {
       position: fixed; top: 0; left: 0; bottom: 0; width: 260px; background: var(--primary-dark); color: white;
       z-index: 5000; display: flex; flex-direction: column; transition: transform 0.3s ease;
-      transform: translateX(-100%); /* Oculto por defecto */
+      transform: translateX(-100%);
       box-shadow: 2px 0 10px rgba(0,0,0,0.2);
     }
     #sidebar.open { transform: translateX(0); }
@@ -59,30 +55,20 @@
     .sidebar-menu li:hover { background: rgba(255,255,255,0.1); }
     .sidebar-menu li.active { background: rgba(255,255,255,0.2); border-left: 4px solid var(--accent); }
     
-    /* Overlay para móvil cuando el sidebar está abierto */
-    #sidebar-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 4000; display: none;
-    }
+    #sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 4000; display: none; }
     #sidebar-overlay.active { display: block; }
 
-    /* Contenido Principal */
-    #content-wrapper {
-      flex: 1; display: flex; flex-direction: column; width: 100%;
-      transition: margin-left 0.3s ease;
-    }
-    
+    #content-wrapper { flex: 1; display: flex; flex-direction: column; width: 100%; transition: margin-left 0.3s ease; }
     header { background: var(--primary); color: white; padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center; }
     .header-left { display: flex; align-items: center; gap: 1rem; }
     .menu-btn { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; display: flex; align-items: center; }
     .logo { font-size: 1.25rem; font-weight: 800; }
     .user-info { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
 
-    /* Vistas */
     .view { display: none; padding: 1rem; max-width: 1200px; margin: 0 auto; width: 100%; flex: 1; animation: fadeIn 0.3s; }
     .view.active { display: block; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* Home View Elements */
     .hero { background: var(--primary-dark); color: white; padding: 2rem 1rem 3.5rem; text-align: center; border-radius: var(--radius); margin-bottom: 2rem; }
     .hero h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
     .search-box { background: white; border-radius: var(--radius); padding: 0.9rem; max-width: 900px; margin: -3rem auto 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; box-shadow: 0 4px 15px rgba(0,0,0,0.1); position: relative; z-index: 10; }
@@ -106,7 +92,6 @@
     .trip-actions { display: flex; gap: 0.5rem; margin-top: 0.6rem; }
     .btn-reserve { flex: 1; background: var(--primary); color: white; border: none; border-radius: 8px; padding: 0.7rem; font-weight: 700; cursor: pointer; }
 
-    /* Tablas y Listas (Reservas) */
     .reserva-card { background: white; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 4px solid var(--accent); }
     .reserva-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-weight: bold; }
     .badge-status { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; color: white; text-transform: capitalize; }
@@ -116,13 +101,11 @@
     .reserva-body p { font-size: 0.9rem; color: var(--muted); margin-bottom: 0.3rem; }
     .btn-cancelar { background: transparent; color: var(--danger); border: 1px solid var(--danger); padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; margin-top: 0.5rem; font-size: 0.8rem;}
 
-    /* Utilidades y Formularios */
     .card { background: white; padding: 1.5rem; border-radius: var(--radius); box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 1rem; }
     .faq-item { margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
     .faq-item h4 { color: var(--primary); margin-bottom: 0.3rem; }
     .faq-item p { font-size: 0.9rem; color: var(--muted); }
     
-    /* Modal y Toast */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 8000; padding: 1rem; }
     .modal-overlay.open { display: flex; }
     .modal { background: white; width: 100%; max-width: 500px; border-radius: var(--radius); overflow-y: auto; max-height: 90vh; }
@@ -132,13 +115,11 @@
     .toast { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--success); color: white; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: 700; opacity: 0; transition: 0.3s; z-index: 10000; }
     .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
-    /* Media Queries para Escritorio */
     @media (min-width: 768px) {
-      #sidebar { transform: translateX(0); } /* Siempre visible en escritorio */
+      #sidebar { transform: translateX(0); }
       #content-wrapper { margin-left: 260px; }
       .menu-btn { display: none; }
       #sidebar-overlay { display: none !important; }
-      
       .search-box { grid-template-columns: repeat(4, 1fr); }
       .search-box button { grid-column: auto; }
       .trips-grid { grid-template-columns: repeat(2, 1fr); }
@@ -150,13 +131,11 @@
 </head>
 <body>
 
-  <!-- 1. SPLASH SCREEN -->
   <div id="splash-screen">
     <div class="splash-logo">🚌</div>
     <div class="splash-title">Viajes Perdomo</div>
   </div>
 
-  <!-- 2. LOGIN SCREEN -->
   <div id="login-screen">
     <div class="login-card">
       <h2 id="auth-title">Iniciar Sesión</h2>
@@ -176,6 +155,14 @@
         <input type="password" id="auth-password" placeholder="••••••••" />
       </div>
 
+      <!-- SELECTOR DE GESTOR (Solo visible en modo Registro) -->
+      <div class="input-group" id="group-gestor" style="display:none;">
+        <label>Gestor que te atendió (Obligatorio) *</label>
+        <select id="auth-gestor" required style="border-color: var(--accent);">
+          <option value="">-- Seleccione un gestor --</option>
+        </select>
+      </div>
+
       <button class="btn-main" id="btn-auth-submit">Entrar</button>
       
       <div style="text-align: center; margin: 1rem 0; color: var(--muted);">o</div>
@@ -189,13 +176,9 @@
     </div>
   </div>
 
-  <!-- 3. APP PRINCIPAL -->
   <div id="main-app">
-    
-    <!-- OVERLAY PARA MÓVIL -->
     <div id="sidebar-overlay"></div>
 
-    <!-- SIDEBAR (MENÚ LATERAL) -->
     <aside id="sidebar">
       <div class="sidebar-header">
         <span style="font-size: 2rem;">🚌</span>
@@ -212,7 +195,6 @@
       </ul>
     </aside>
 
-    <!-- CONTENIDO -->
     <div id="content-wrapper">
       <header>
         <div class="header-left">
@@ -224,7 +206,6 @@
         </div>
       </header>
 
-      <!-- VISTA: HOME -->
       <section id="view-home" class="view active">
         <div class="hero">
           <h1>Viaja cómodo por Cuba</h1>
@@ -255,7 +236,6 @@
         <div class="trips-grid" id="trips-grid"></div>
       </section>
 
-      <!-- VISTA: PERFIL -->
       <section id="view-perfil" class="view">
         <div class="card">
           <h2 style="color: var(--primary); margin-bottom: 1rem;">Editar mis datos</h2>
@@ -275,13 +255,11 @@
         </div>
       </section>
 
-      <!-- VISTA: RESERVAS -->
       <section id="view-reservas" class="view">
         <h2 style="color: var(--primary); margin-bottom: 1rem;">Mis Reservas</h2>
         <div id="lista-reservas"></div>
       </section>
 
-      <!-- VISTA: FAQ -->
       <section id="view-faq" class="view">
         <div class="card">
           <h2 style="color: var(--primary); margin-bottom: 1rem;">Preguntas Frecuentes</h2>
@@ -300,7 +278,6 @@
         </div>
       </section>
 
-      <!-- VISTA: VALORACIÓN -->
       <section id="view-valoracion" class="view">
         <div class="card">
           <h2 style="color: var(--primary); margin-bottom: 1rem;">Deja tu Valoración</h2>
@@ -323,7 +300,6 @@
         </div>
       </section>
 
-      <!-- VISTA: ACERCA DE -->
       <section id="view-acerca" class="view">
         <div class="card">
           <h2 style="color: var(--primary); margin-bottom: 1rem;">Acerca de Viajes Perdomo</h2>
@@ -331,16 +307,15 @@
           <p style="margin-top: 1rem; line-height: 1.6; color: var(--muted);">Nuestro compromiso es que llegues a tu destino de la mejor manera posible.</p>
         </div>
       </section>
-
     </div>
   </div>
 
-  <!-- MODAL RESERVA -->
   <div class="modal-overlay" id="modal">
     <div class="modal">
       <div class="modal-header"><h3 id="modal-titulo">Reservar</h3><button id="modal-close" style="background:none;border:none;color:white;cursor:pointer;">✕</button></div>
       <div class="modal-body">
         <div id="modal-summary" style="background:#f8fafc; padding:0.8rem; border-radius:8px;"></div>
+        
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
           <div class="input-group"><label>CI</label><input type="text" id="res-ci" /></div>
           <div class="input-group"><label>Teléfono</label><input type="tel" id="res-telefono" /></div>
@@ -355,9 +330,6 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    // ==========================================
-    // ESTADO GLOBAL
-    // ==========================================
     let GUAGUAS = [];
     let USER = null;
     let isRegisterMode = false;
@@ -375,17 +347,38 @@
       setTimeout(() => toast.classList.remove('show'), 3000);
     }
 
-    // ==========================================
-    // 1. FLUJO SPLASH -> LOGIN/APP
-    // ==========================================
+    // Cargar gestores para el registro
+    async function cargarGestoresRegistro() {
+      try {
+        const res = await fetch('/api/gestores');
+        if (!res.ok) throw new Error('Error al cargar gestores');
+        const gestores = await res.json();
+        
+        const select = $('#auth-gestor');
+        select.innerHTML = '<option value="">-- Seleccione un gestor --</option>';
+        
+        if (gestores.length === 0) {
+          select.innerHTML += '<option value="" disabled>No hay gestores registrados aún</option>';
+        } else {
+          gestores.forEach(g => {
+            select.innerHTML += `<option value="${g.usuario}">${g.nombre} (${g.usuario})</option>`;
+          });
+        }
+      } catch (error) {
+        console.error(error);
+        $('#auth-gestor').innerHTML = '<option value="">Error al cargar gestores</option>';
+      }
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
+      cargarGestoresRegistro(); // Cargar gestores al abrir la app
+      
       setTimeout(() => {
         const splash = $('#splash-screen');
         if (splash) {
           splash.classList.add('hidden');
           setTimeout(() => splash.style.display = 'none', 500); 
         }
-        
         try {
           const savedUser = localStorage.getItem('vp_user');
           if (savedUser) {
@@ -400,19 +393,18 @@
       }, 2000);
     });
 
-    // ==========================================
-    // 2. LÓGICA DE AUTENTICACIÓN
-    // ==========================================
     $('#toggle-auth-mode').addEventListener('click', () => {
       isRegisterMode = !isRegisterMode;
       if (isRegisterMode) {
         $('#auth-title').textContent = 'Crear Cuenta';
         $('#group-nombre').style.display = 'block';
+        $('#group-gestor').style.display = 'block'; // Mostrar selector de gestor
         $('#btn-auth-submit').textContent = 'Registrarse';
         $('#toggle-auth-mode').textContent = '¿Ya tienes cuenta? Inicia sesión';
       } else {
         $('#auth-title').textContent = 'Iniciar Sesión';
         $('#group-nombre').style.display = 'none';
+        $('#group-gestor').style.display = 'none'; // Ocultar selector de gestor
         $('#btn-auth-submit').textContent = 'Entrar';
         $('#toggle-auth-mode').textContent = '¿No tienes cuenta? Regístrate aquí';
       }
@@ -422,13 +414,19 @@
       const nombre = $('#auth-nombre').value;
       const email = $('#auth-email').value;
       const password = $('#auth-password').value;
+      const gestorCodigo = $('#auth-gestor').value;
 
-      if (!email || !password || (isRegisterMode && !nombre)) {
-        return mostrarToast('Completa todos los campos', 'error');
+      if (!email || !password) return mostrarToast('Completa todos los campos', 'error');
+      
+      if (isRegisterMode) {
+        if (!nombre) return mostrarToast('El nombre es obligatorio', 'error');
+        if (!gestorCodigo) return mostrarToast('Debes seleccionar un gestor', 'error'); // Validación obligatoria
       }
 
       const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
-      const payload = isRegisterMode ? { nombre, email, password } : { email, password };
+      const payload = isRegisterMode 
+        ? { nombre, email, password, gestorCodigo } 
+        : { email, password };
 
       try {
         const res = await fetch(endpoint, {
@@ -459,9 +457,6 @@
       mostrarToast('Sesión cerrada');
     });
 
-    // ==========================================
-    // 3. LÓGICA DEL SIDEBAR Y VISTAS
-    // ==========================================
     $('#btn-menu').addEventListener('click', () => {
       $('#sidebar').classList.add('open');
       $('#sidebar-overlay').classList.add('active');
@@ -474,30 +469,20 @@
 
     document.querySelectorAll('.sidebar-menu li[data-target]').forEach(item => {
       item.addEventListener('click', () => {
-        // Quitar activo de todos los menús
         document.querySelectorAll('.sidebar-menu li').forEach(i => i.classList.remove('active'));
         item.classList.add('active');
-
-        // Ocultar todas las vistas
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         
-        // Mostrar la vista seleccionada
         const targetId = item.dataset.target;
         $('#' + targetId).classList.add('active');
-
-        // Actualizar título del header
         $('#header-title').textContent = item.textContent.replace(/[^\w\sáéíóúÁÉÍÓÚñÑ]/gi, '').trim();
 
-        // Cerrar sidebar en móvil
         if (window.innerWidth < 768) {
           $('#sidebar').classList.remove('open');
           $('#sidebar-overlay').classList.remove('active');
         }
 
-        // Lógica específica al cambiar de vista
-        if (targetId === 'view-reservas') {
-          cargarMisReservas();
-        }
+        if (targetId === 'view-reservas') cargarMisReservas();
         if (targetId === 'view-perfil') {
           $('#perfil-nombre').value = USER.nombre;
           $('#perfil-email').value = USER.email;
@@ -505,9 +490,6 @@
       });
     });
 
-    // ==========================================
-    // 4. INICIAR APP Y DATOS
-    // ==========================================
     function iniciarApp() {
       $('#login-screen').classList.remove('active');
       $('#main-app').classList.add('active');
@@ -529,13 +511,10 @@
     async function cargarMisReservas() {
       const contenedor = $('#lista-reservas');
       contenedor.innerHTML = '<p>Cargando reservas...</p>';
-      
       try {
         const res = await fetch('/api/reservas');
         if (!res.ok) throw new Error('Error al cargar reservas');
         todasLasReservas = await res.json();
-        
-        // Filtrar solo las del usuario logueado
         const misReservas = todasLasReservas.filter(r => r.email === USER.email);
 
         if (misReservas.length === 0) {
@@ -563,30 +542,23 @@
       }
     }
 
-    // Función global para cancelar
     window.cancelarReserva = async (id) => {
       if (!confirm('¿Estás seguro de que deseas cancelar esta reserva?')) return;
-      
       try {
         const res = await fetch(`/api/reservas/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ estado: 'cancelada' })
         });
-        
         if (!res.ok) throw new Error('Error al cancelar');
-        
         mostrarToast('Reserva cancelada correctamente');
-        cargarMisReservas(); // Recargar la lista
-        cargarGuaguas(); // Recargar guaguas por si se devolvieron asientos
+        cargarMisReservas();
+        cargarGuaguas();
       } catch (error) {
         mostrarToast('No se pudo cancelar la reserva', 'error');
       }
     };
 
-    // ==========================================
-    // 5. RENDERIZADO DE GUAGUAS Y RESERVA
-    // ==========================================
     function renderGuaguas() {
       const grid = $('#trips-grid');
       const filtro = document.querySelector('.chip.active').dataset.filter;
@@ -653,6 +625,7 @@
           body: JSON.stringify({
             nombre: USER.nombre,
             email: USER.email,
+            gestorCodigo: USER.gestorCodigo, // <-- Asigna automáticamente el gestor del registro
             ci,
             telefono,
             guaguaId: viajeSeleccionado.id,
@@ -671,7 +644,6 @@
       }
     });
 
-    // Eventos UI
     $('#filtros').addEventListener('click', (e) => {
       if (!e.target.classList.contains('chip')) return;
       document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
