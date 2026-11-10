@@ -11,6 +11,9 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' })); 
 app.use(express.static(path.join(__dirname, '../public')));
 
+// ==========================================
+// CONFIGURACIÓN DE GITHUB
+// ==========================================
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_OWNER = process.env.GITHUB_OWNER;
 const GITHUB_REPO = process.env.GITHUB_REPO;
@@ -90,7 +93,9 @@ async function inicializarDatos() {
   }
 }
 
-// ENDPOINTS
+// ==========================================
+// ENDPOINTS: AUTENTICACIÓN Y USUARIOS
+// ==========================================
 app.get('/api/gestores', async (req, res) => {
   try {
     const data = await leerJSON('credenciales');
@@ -104,10 +109,11 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const { nombre, email, password, gestorCodigo } = req.body;
     if (!gestorCodigo) return res.status(400).json({ error: 'Debes seleccionar un gestor' });
-    const data = await leerJSON('usuarios');
+    const data = await leerJSON('usuarios', true);
     const usuarios = data ? data.data : [];
     const sha = data ? data.sha : null;
     if (usuarios.find(u => u.email === email)) return res.status(400).json({ error: 'Correo registrado' });
+    
     const nuevoUsuario = { id: Date.now().toString(), nombre, email, password, gestorCodigo };
     usuarios.push(nuevoUsuario);
     await guardarJSON('usuarios', usuarios, sha);
@@ -126,6 +132,55 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (error) { res.status(500).json({ error: 'Error al iniciar sesión' }); }
 });
 
+// NUEVO: Gestión de clientes de la PWA (Admin)
+app.get('/api/usuarios', async (req, res) => {
+  try {
+    const data = await leerJSON('usuarios');
+    res.json(data ? data.data : []);
+  } catch (error) { res.status(500).json({ error: 'Error al leer usuarios' }); }
+});
+
+app.post('/api/usuarios', async (req, res) => {
+  try {
+    const actual = await leerJSON('usuarios', true);
+    const lista = actual ? actual.data : [];
+    const sha = actual ? actual.sha : null;
+    if (lista.find(u => u.email === req.body.email)) return res.status(400).json({ error: 'Correo ya registrado' });
+    const nuevo = { ...req.body, id: Date.now().toString() };
+    lista.push(nuevo);
+    await guardarJSON('usuarios', lista, sha);
+    res.status(201).json(nuevo);
+  } catch (error) { res.status(500).json({ error: 'Error al crear usuario' }); }
+});
+
+// NUEVO: Editar perfil (usado por el cliente y el admin)
+app.put('/api/usuarios/:id', async (req, res) => {
+  try {
+    const actual = await leerJSON('usuarios', true);
+    const lista = actual ? actual.data : [];
+    const sha = actual ? actual.sha : null;
+    const index = lista.findIndex(u => u.id === req.params.id);
+    if (index === -1) return res.status(404).json({ error: 'Usuario no encontrado' });
+    
+    lista[index] = { ...lista[index], ...req.body };
+    await guardarJSON('usuarios', lista, sha);
+    res.json(lista[index]);
+  } catch (error) { res.status(500).json({ error: 'Error al actualizar usuario' }); }
+});
+
+app.delete('/api/usuarios/:id', async (req, res) => {
+  try {
+    const actual = await leerJSON('usuarios', true);
+    const lista = actual ? actual.data.filter(u => u.id !== req.params.id) : [];
+    const sha = actual ? actual.sha : null;
+    await guardarJSON('usuarios', lista, sha);
+    res.json({ ok: true });
+  } catch (error) { res.status(500).json({ error: 'Error al eliminar usuario' }); }
+});
+
+// ==========================================
+// ENDPOINTS: GUAGUAS
+// ==========================================
 app.get('/api/guaguas', async (req, res) => {
   try {
     const data = await leerJSON('guaguas');
@@ -168,6 +223,9 @@ app.delete('/api/guaguas/:id', async (req, res) => {
   } catch (error) { res.status(500).json({ error: 'Error al eliminar' }); }
 });
 
+// ==========================================
+// ENDPOINTS: RESERVAS
+// ==========================================
 app.get('/api/reservas', async (req, res) => {
   try {
     const data = await leerJSON('reservas');
@@ -217,7 +275,6 @@ app.put('/api/reservas/:id', async (req, res) => {
     const index = reservas.findIndex(r => r.id === req.params.id);
     if (index === -1) return res.status(404).json({ error: 'No encontrada' });
 
-    // NUEVO: Si se marca como completada o cancelada, devolver asientos
     if ((req.body.estado === 'cancelada' || req.body.estado === 'completada') && reservas[index].estado !== 'cancelada' && reservas[index].estado !== 'completada') {
       const guaguasData = await leerJSON('guaguas', true);
       if (guaguasData) {
@@ -246,6 +303,9 @@ app.delete('/api/reservas/:id', async (req, res) => {
   } catch (error) { res.status(500).json({ error: 'Error al eliminar' }); }
 });
 
+// ==========================================
+// ENDPOINTS: CREDENCIALES (ADMIN/GESTORES)
+// ==========================================
 app.get('/api/credenciales', async (req, res) => {
   try {
     const data = await leerJSON('credenciales');
@@ -288,6 +348,9 @@ app.delete('/api/credenciales/:id', async (req, res) => {
   } catch (error) { res.status(500).json({ error: 'Error eliminar' }); }
 });
 
+// ==========================================
+// ENDPOINTS: CONFIGURACIÓN
+// ==========================================
 app.get('/api/config', async (req, res) => {
   try {
     const data = await leerJSON('config');
@@ -304,6 +367,9 @@ app.put('/api/config', async (req, res) => {
   } catch (error) { res.status(500).json({ error: 'Error guardar config' }); }
 });
 
+// ==========================================
+// ARRANCAR SERVIDOR
+// ==========================================
 const PORT = process.env.PORT || 3000;
 inicializarDatos().then(() => {
   app.listen(PORT, () => console.log(`🚀 Servidor en puerto ${PORT}`));
