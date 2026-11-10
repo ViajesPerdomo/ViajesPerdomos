@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Aumentado para permitir subida de imágenes Base64
+app.use(express.json({ limit: '10mb' })); 
 app.use(express.static(path.join(__dirname, '../public')));
 
 // ==========================================
@@ -96,7 +96,6 @@ async function inicializarDatos() {
   try {
     console.log("🔄 Iniciando comprobación de datos en GitHub...");
 
-    // 1. Guaguas
     let guaguasData = null;
     try { guaguasData = await leerJSON('guaguas'); } catch (e) { return; }
 
@@ -109,27 +108,19 @@ async function inicializarDatos() {
       await guardarJSON('guaguas', guaguasIniciales); 
     }
 
-    // 2. Reservas
     let reservasData = null;
     try { reservasData = await leerJSON('reservas'); } catch(e) { return; }
     if (!reservasData) await guardarJSON('reservas', []);
 
-    // 3. Usuarios (Credenciales del Admin)
     let usuariosData = null;
     try { usuariosData = await leerJSON('usuarios'); } catch(e) { return; }
     if (!usuariosData) await guardarJSON('usuarios', []);
 
-    // 4. Configuración PWA
     let configData = null;
     try { configData = await leerJSON('config'); } catch(e) { return; }
     if (!configData) {
       console.log('🌱 Creando config.json...');
-      await guardarJSON('config', {
-        nombreApp: 'Viajes Perdomo',
-        icono: '🚌',
-        color: '#0f766e',
-        imagenHero: ''
-      });
+      await guardarJSON('config', { nombreApp: 'Viajes Perdomo', icono: '🚌', color: '#0f766e', imagenHero: '' });
     }
 
     console.log("🎉 Inicialización de datos completada.");
@@ -146,9 +137,30 @@ app.get('/api/usuarios', async (req, res) => {
   res.json(data ? data.data : []);
 });
 
+// NUEVO ENDPOINT: Obtener lista pública de gestores
+app.get('/api/gestores', async (req, res) => {
+  try {
+    const data = await leerJSON('credenciales');
+    const credenciales = data ? data.data : [];
+    // Filtramos solo los que tienen rol de gestor
+    const gestores = credenciales
+      .filter(c => c.rol === 'gestor')
+      .map(c => ({ usuario: c.usuario, nombre: c.nombre }));
+    res.json(gestores);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al leer gestores' });
+  }
+});
+
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { nombre, email, password } = req.body;
+    const { nombre, email, password, gestorCodigo } = req.body;
+    
+    // VALIDACIÓN: El gestor es obligatorio en el registro
+    if (!gestorCodigo) {
+      return res.status(400).json({ error: 'Debes seleccionar un gestor para registrarte' });
+    }
+
     const data = await leerJSON('usuarios');
     const usuarios = data ? data.data : [];
     const sha = data ? data.sha : null;
@@ -157,12 +169,21 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'El correo ya está registrado' });
     }
 
-    const nuevoUsuario = { id: Date.now().toString(), nombre, email, password };
+    // Guardamos el usuario con el gestor que lo captó
+    const nuevoUsuario = { 
+      id: Date.now().toString(), 
+      nombre, 
+      email, 
+      password,
+      gestorCodigo // <-- Se guarda el gestor en el perfil del usuario
+    };
+    
     usuarios.push(nuevoUsuario);
     await guardarJSON('usuarios', usuarios, sha);
     
     res.status(201).json({ mensaje: 'Usuario creado', usuario: nuevoUsuario });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: 'Error interno al registrar' });
   }
 });
@@ -328,7 +349,7 @@ app.delete('/api/reservas/:id', async (req, res) => {
 });
 
 // ==========================================
-// NUEVOS ENDPOINTS: CREDENCIALES (ADMIN)
+// ENDPOINTS: CREDENCIALES (ADMIN)
 // ==========================================
 app.get('/api/credenciales', async (req, res) => {
   try {
@@ -402,7 +423,6 @@ app.put('/api/config', async (req, res) => {
     const actual = await leerJSON('config');
     const sha = actual ? actual.sha : null;
     
-    // Guardamos la nueva configuración (sobrescribe la anterior)
     await guardarJSON('config', req.body, sha);
     res.json({ mensaje: 'Configuración actualizada', config: req.body });
   } catch (error) {
