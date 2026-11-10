@@ -155,7 +155,6 @@
         <input type="password" id="auth-password" placeholder="••••••••" />
       </div>
 
-      <!-- SELECTOR DE GESTOR (Solo visible en modo Registro) -->
       <div class="input-group" id="group-gestor" style="display:none;">
         <label>Gestor que te atendió (Obligatorio) *</label>
         <select id="auth-gestor" required style="border-color: var(--accent);">
@@ -233,7 +232,9 @@
           <button class="chip" data-filter="oeste">🛣️ Oeste</button>
           <button class="chip" data-filter="especial">⭐ Especiales</button>
         </div>
-        <div class="trips-grid" id="trips-grid"></div>
+        <div class="trips-grid" id="trips-grid">
+          <!-- Aquí se mostrará el mensaje de carga -->
+        </div>
       </section>
 
       <section id="view-perfil" class="view">
@@ -347,7 +348,6 @@
       setTimeout(() => toast.classList.remove('show'), 3000);
     }
 
-    // Cargar gestores para el registro
     async function cargarGestoresRegistro() {
       try {
         const res = await fetch('/api/gestores');
@@ -371,7 +371,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      cargarGestoresRegistro(); // Cargar gestores al abrir la app
+      cargarGestoresRegistro();
       
       setTimeout(() => {
         const splash = $('#splash-screen');
@@ -398,13 +398,13 @@
       if (isRegisterMode) {
         $('#auth-title').textContent = 'Crear Cuenta';
         $('#group-nombre').style.display = 'block';
-        $('#group-gestor').style.display = 'block'; // Mostrar selector de gestor
+        $('#group-gestor').style.display = 'block';
         $('#btn-auth-submit').textContent = 'Registrarse';
         $('#toggle-auth-mode').textContent = '¿Ya tienes cuenta? Inicia sesión';
       } else {
         $('#auth-title').textContent = 'Iniciar Sesión';
         $('#group-nombre').style.display = 'none';
-        $('#group-gestor').style.display = 'none'; // Ocultar selector de gestor
+        $('#group-gestor').style.display = 'none';
         $('#btn-auth-submit').textContent = 'Entrar';
         $('#toggle-auth-mode').textContent = '¿No tienes cuenta? Regístrate aquí';
       }
@@ -420,13 +420,11 @@
       
       if (isRegisterMode) {
         if (!nombre) return mostrarToast('El nombre es obligatorio', 'error');
-        if (!gestorCodigo) return mostrarToast('Debes seleccionar un gestor', 'error'); // Validación obligatoria
+        if (!gestorCodigo) return mostrarToast('Debes seleccionar un gestor', 'error');
       }
 
       const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
-      const payload = isRegisterMode 
-        ? { nombre, email, password, gestorCodigo } 
-        : { email, password };
+      const payload = isRegisterMode ? { nombre, email, password, gestorCodigo } : { email, password };
 
       try {
         const res = await fetch(endpoint, {
@@ -494,7 +492,12 @@
       $('#login-screen').classList.remove('active');
       $('#main-app').classList.add('active');
       $('#user-display').textContent = `Hola, ${USER.nombre}`;
-      cargarGuaguas();
+      
+      // Mostrar mensaje de carga inicial
+      $('#trips-grid').innerHTML = '<p style="grid-column:1/-1; text-align:center;">Cargando guaguas, por favor espera...</p>';
+      
+      // Pequeño retraso para asegurar que el servidor esté listo
+      setTimeout(cargarGuaguas, 500);
     }
 
     async function cargarGuaguas() {
@@ -504,6 +507,7 @@
         GUAGUAS = await res.json();
         renderGuaguas();
       } catch (error) {
+        $('#trips-grid').innerHTML = '<p style="grid-column:1/-1; text-align:center; color:red;">Error al cargar las guaguas. Revisa tu conexión o recarga la página.</p>';
         mostrarToast('Error cargando guaguas.', 'error');
       }
     }
@@ -625,7 +629,7 @@
           body: JSON.stringify({
             nombre: USER.nombre,
             email: USER.email,
-            gestorCodigo: USER.gestorCodigo, // <-- Asigna automáticamente el gestor del registro
+            gestorCodigo: USER.gestorCodigo,
             ci,
             telefono,
             guaguaId: viajeSeleccionado.id,
