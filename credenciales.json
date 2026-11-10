@@ -12,5 +12,12 @@
     "password": "Danilo.47",
     "rol": "auditor",
     "id": "1794279010871"
+  },
+  {
+    "nombre": "Kendry",
+    "usuario": "Kendry",
+    "password": "123sd",
+    "rol": "gestor",
+    "id": "1794280813762"
   }
 ]
