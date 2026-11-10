@@ -12,7 +12,7 @@
       --bg: #f8fafc; --card: #ffffff; --text: #0f172a; --muted: #64748b;
       --border: #e2e8f0; --success: #16a34a; --danger: #dc2626; --radius: 14px;
     }
-    body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+    body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
 
     /* --- SPLASH SCREEN --- */
     #splash-screen {
@@ -35,31 +35,61 @@
     .login-card h2 { text-align: center; color: var(--primary); margin-bottom: 1.5rem; }
     .input-group { margin-bottom: 1rem; }
     .input-group label { display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.3rem; color: var(--muted); }
-    .input-group input { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; }
+    .input-group input, .input-group textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; font-family: inherit; }
     .btn-main { width: 100%; background: var(--primary); color: white; border: none; padding: 0.8rem; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 0.5rem; }
     .btn-google { width: 100%; background: white; color: #333; border: 1px solid #ccc; padding: 0.8rem; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
-    .btn-google:hover { background: #f1f1f1; }
     .toggle-auth { text-align: center; margin-top: 1rem; font-size: 0.9rem; color: var(--primary); cursor: pointer; text-decoration: underline; }
 
-    /* --- APP (Oculta al inicio) --- */
-    #main-app { display: none; flex-direction: column; flex: 1; }
+    /* --- APP LAYOUT & SIDEBAR --- */
+    #main-app { display: none; flex: 1; flex-direction: row; position: relative; }
     #main-app.active { display: flex; }
 
-    header { background: var(--primary); color: white; padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center; }
-    .logo { font-size: 1.25rem; font-weight: 800; }
-    nav button { background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.45rem 0.85rem; border-radius: 999px; cursor: pointer; font-weight: 600; margin-left: 0.5rem; }
-    nav button.active { background: white; color: var(--primary); }
-    .btn-logout { background: transparent; border: 1px solid white; color: white; padding: 0.2rem 0.5rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; margin-left: 0.5rem;}
-
-    .hero { background: var(--primary-dark); color: white; padding: 2rem 1rem 3.5rem; text-align: center; }
-    .hero h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    /* Sidebar */
+    #sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0; width: 260px; background: var(--primary-dark); color: white;
+      z-index: 5000; display: flex; flex-direction: column; transition: transform 0.3s ease;
+      transform: translateX(-100%); /* Oculto por defecto */
+      box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+    }
+    #sidebar.open { transform: translateX(0); }
+    .sidebar-header { padding: 1.5rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 0.5rem; }
+    .sidebar-header h2 { font-size: 1.2rem; }
+    .sidebar-menu { list-style: none; padding: 1rem 0; flex: 1; overflow-y: auto; }
+    .sidebar-menu li { padding: 1rem 1.5rem; cursor: pointer; display: flex; align-items: center; gap: 0.8rem; transition: background 0.2s; font-weight: 500; }
+    .sidebar-menu li:hover { background: rgba(255,255,255,0.1); }
+    .sidebar-menu li.active { background: rgba(255,255,255,0.2); border-left: 4px solid var(--accent); }
     
-    .search-box { background: white; border-radius: var(--radius); padding: 0.9rem; max-width: 900px; margin: -2rem auto 1rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; box-shadow: 0 4px 15px rgba(0,0,0,0.1); position: relative; z-index: 10; }
+    /* Overlay para móvil cuando el sidebar está abierto */
+    #sidebar-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 4000; display: none;
+    }
+    #sidebar-overlay.active { display: block; }
+
+    /* Contenido Principal */
+    #content-wrapper {
+      flex: 1; display: flex; flex-direction: column; width: 100%;
+      transition: margin-left 0.3s ease;
+    }
+    
+    header { background: var(--primary); color: white; padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center; }
+    .header-left { display: flex; align-items: center; gap: 1rem; }
+    .menu-btn { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; display: flex; align-items: center; }
+    .logo { font-size: 1.25rem; font-weight: 800; }
+    .user-info { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+
+    /* Vistas */
+    .view { display: none; padding: 1rem; max-width: 1200px; margin: 0 auto; width: 100%; flex: 1; animation: fadeIn 0.3s; }
+    .view.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Home View Elements */
+    .hero { background: var(--primary-dark); color: white; padding: 2rem 1rem 3.5rem; text-align: center; border-radius: var(--radius); margin-bottom: 2rem; }
+    .hero h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .search-box { background: white; border-radius: var(--radius); padding: 0.9rem; max-width: 900px; margin: -3rem auto 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; box-shadow: 0 4px 15px rgba(0,0,0,0.1); position: relative; z-index: 10; }
     .field { display: flex; flex-direction: column; }
     .field input, .field select { padding: 0.55rem; border: 1px solid var(--border); border-radius: 8px; width: 100%; }
     .search-box button { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 0.65rem; font-weight: 700; cursor: pointer; grid-column: 1 / -1; }
 
-    main { max-width: 1200px; margin: 0 auto; padding: 1rem; width: 100%; flex: 1; }
     .filters { display: flex; gap: 0.4rem; overflow-x: auto; margin-bottom: 1rem; }
     .chip { background: white; border: 1px solid var(--border); border-radius: 999px; padding: 0.35rem 0.8rem; cursor: pointer; white-space: nowrap; }
     .chip.active { background: var(--primary); color: white; }
@@ -76,22 +106,44 @@
     .trip-actions { display: flex; gap: 0.5rem; margin-top: 0.6rem; }
     .btn-reserve { flex: 1; background: var(--primary); color: white; border: none; border-radius: 8px; padding: 0.7rem; font-weight: 700; cursor: pointer; }
 
+    /* Tablas y Listas (Reservas) */
+    .reserva-card { background: white; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 4px solid var(--accent); }
+    .reserva-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-weight: bold; }
+    .badge-status { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; color: white; text-transform: capitalize; }
+    .status-pendiente { background: var(--accent); }
+    .status-cancelada { background: var(--danger); }
+    .status-confirmada { background: var(--success); }
+    .reserva-body p { font-size: 0.9rem; color: var(--muted); margin-bottom: 0.3rem; }
+    .btn-cancelar { background: transparent; color: var(--danger); border: 1px solid var(--danger); padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; margin-top: 0.5rem; font-size: 0.8rem;}
+
+    /* Utilidades y Formularios */
+    .card { background: white; padding: 1.5rem; border-radius: var(--radius); box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 1rem; }
+    .faq-item { margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+    .faq-item h4 { color: var(--primary); margin-bottom: 0.3rem; }
+    .faq-item p { font-size: 0.9rem; color: var(--muted); }
+    
     /* Modal y Toast */
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 8000; padding: 1rem; }
     .modal-overlay.open { display: flex; }
     .modal { background: white; width: 100%; max-width: 500px; border-radius: var(--radius); overflow-y: auto; max-height: 90vh; }
     .modal-header { padding: 1rem; background: var(--primary); color: white; display: flex; justify-content: space-between; }
     .modal-body { padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
     .btn-confirm { background: var(--success); color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: bold; cursor: pointer; }
-    .toast { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--success); color: white; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: 700; opacity: 0; transition: 0.3s; z-index: 2000; }
+    .toast { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--success); color: white; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: 700; opacity: 0; transition: 0.3s; z-index: 10000; }
     .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
-    @media (min-width: 600px) {
+    /* Media Queries para Escritorio */
+    @media (min-width: 768px) {
+      #sidebar { transform: translateX(0); } /* Siempre visible en escritorio */
+      #content-wrapper { margin-left: 260px; }
+      .menu-btn { display: none; }
+      #sidebar-overlay { display: none !important; }
+      
       .search-box { grid-template-columns: repeat(4, 1fr); }
       .search-box button { grid-column: auto; }
       .trips-grid { grid-template-columns: repeat(2, 1fr); }
     }
-    @media (min-width: 900px) {
+    @media (min-width: 1024px) {
       .trips-grid { grid-template-columns: repeat(3, 1fr); }
     }
   </style>
@@ -139,43 +191,148 @@
 
   <!-- 3. APP PRINCIPAL -->
   <div id="main-app">
-    <header>
-      <div class="logo">🚌 Viajes Perdomo</div>
-      <div style="display:flex; align-items:center;">
-        <span id="user-display" style="font-size:0.8rem; margin-right:0.5rem;">Hola</span>
-        <button class="btn-logout" id="btn-logout">Salir</button>
-      </div>
-    </header>
+    
+    <!-- OVERLAY PARA MÓVIL -->
+    <div id="sidebar-overlay"></div>
 
-    <section class="hero">
-      <h1>Viaja cómodo por Cuba</h1>
-      <p>Guaguas Yutong con A/C y WiFi.</p>
-    </section>
+    <!-- SIDEBAR (MENÚ LATERAL) -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <span style="font-size: 2rem;">🚌</span>
+        <h2>Viajes Perdomo</h2>
+      </div>
+      <ul class="sidebar-menu">
+        <li class="active" data-target="view-home">🏠 Inicio</li>
+        <li data-target="view-perfil">👤 Mi Perfil</li>
+        <li data-target="view-reservas">🎫 Mis Reservas</li>
+        <li data-target="view-faq">❓ Preguntas Frecuentes</li>
+        <li data-target="view-valoracion">⭐ Valorar Agencia</li>
+        <li data-target="view-acerca">ℹ️ Acerca de Nosotros</li>
+        <li id="btn-logout-sidebar" style="color: #fca5a5; margin-top: auto;">🚪 Cerrar Sesión</li>
+      </ul>
+    </aside>
 
-    <div class="search-box">
-      <div class="field">
-        <label>Origen</label>
-        <select id="origen"><option value="">Cualquiera</option><option>La Habana</option><option>Varadero</option><option>Santiago de Cuba</option><option>Holguín</option><option>Trinidad</option></select>
-      </div>
-      <div class="field">
-        <label>Destino</label>
-        <select id="destino"><option value="">Cualquiera</option><option>La Habana</option><option>Varadero</option><option>Santiago de Cuba</option><option>Holguín</option><option>Trinidad</option></select>
-      </div>
-      <div class="field"><label>Fecha</label><input type="date" id="fecha" /></div>
-      <div class="field"><label>Personas</label><input type="number" id="personas" min="1" max="10" value="1" /></div>
-      <button id="btn-buscar">🔍 Buscar</button>
+    <!-- CONTENIDO -->
+    <div id="content-wrapper">
+      <header>
+        <div class="header-left">
+          <button class="menu-btn" id="btn-menu">☰</button>
+          <div class="logo" id="header-title">Inicio</div>
+        </div>
+        <div class="user-info">
+          <span id="user-display">Hola</span>
+        </div>
+      </header>
+
+      <!-- VISTA: HOME -->
+      <section id="view-home" class="view active">
+        <div class="hero">
+          <h1>Viaja cómodo por Cuba</h1>
+          <p>Guaguas Yutong con A/C y WiFi.</p>
+        </div>
+
+        <div class="search-box">
+          <div class="field">
+            <label>Origen</label>
+            <select id="origen"><option value="">Cualquiera</option><option>La Habana</option><option>Varadero</option><option>Santiago de Cuba</option><option>Holguín</option><option>Trinidad</option></select>
+          </div>
+          <div class="field">
+            <label>Destino</label>
+            <select id="destino"><option value="">Cualquiera</option><option>La Habana</option><option>Varadero</option><option>Santiago de Cuba</option><option>Holguín</option><option>Trinidad</option></select>
+          </div>
+          <div class="field"><label>Fecha</label><input type="date" id="fecha" /></div>
+          <div class="field"><label>Personas</label><input type="number" id="personas" min="1" max="10" value="1" /></div>
+          <button id="btn-buscar">🔍 Buscar</button>
+        </div>
+
+        <div class="filters" id="filtros">
+          <button class="chip active" data-filter="all">Todas</button>
+          <button class="chip" data-filter="este">🛣️ Este</button>
+          <button class="chip" data-filter="centro">🛣️ Centro</button>
+          <button class="chip" data-filter="oeste">🛣️ Oeste</button>
+          <button class="chip" data-filter="especial">⭐ Especiales</button>
+        </div>
+        <div class="trips-grid" id="trips-grid"></div>
+      </section>
+
+      <!-- VISTA: PERFIL -->
+      <section id="view-perfil" class="view">
+        <div class="card">
+          <h2 style="color: var(--primary); margin-bottom: 1rem;">Editar mis datos</h2>
+          <div class="input-group">
+            <label>Nombre completo</label>
+            <input type="text" id="perfil-nombre" />
+          </div>
+          <div class="input-group">
+            <label>Correo electrónico (No editable)</label>
+            <input type="email" id="perfil-email" disabled style="background:#f1f5f9" />
+          </div>
+          <div class="input-group">
+            <label>Nueva Contraseña (dejar en blanco para no cambiar)</label>
+            <input type="password" id="perfil-password" />
+          </div>
+          <button class="btn-main" onclick="alert('Para guardar el perfil se necesita un endpoint PUT en el backend (server.js)')">Guardar Cambios</button>
+        </div>
+      </section>
+
+      <!-- VISTA: RESERVAS -->
+      <section id="view-reservas" class="view">
+        <h2 style="color: var(--primary); margin-bottom: 1rem;">Mis Reservas</h2>
+        <div id="lista-reservas"></div>
+      </section>
+
+      <!-- VISTA: FAQ -->
+      <section id="view-faq" class="view">
+        <div class="card">
+          <h2 style="color: var(--primary); margin-bottom: 1rem;">Preguntas Frecuentes</h2>
+          <div class="faq-item">
+            <h4>¿Cómo puedo pagar mi reserva?</h4>
+            <p>El pago se realiza directamente al abordar la guagua, en efectivo (CUP).</p>
+          </div>
+          <div class="faq-item">
+            <h4>¿Puedo cancelar mi reserva?</h4>
+            <p>Sí, desde la sección "Mis Reservas" puedes cancelar tu viaje. Los asientos volverán a estar disponibles automáticamente.</p>
+          </div>
+          <div class="faq-item">
+            <h4>¿Cuánto equipaje puedo llevar?</h4>
+            <p>Cada pasajero puede llevar una maleta grande y un equipaje de mano sin costo adicional.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- VISTA: VALORACIÓN -->
+      <section id="view-valoracion" class="view">
+        <div class="card">
+          <h2 style="color: var(--primary); margin-bottom: 1rem;">Deja tu Valoración</h2>
+          <p style="margin-bottom: 1rem; color: var(--muted);">Tu opinión nos ayuda a mejorar nuestro servicio.</p>
+          <div class="input-group">
+            <label>Calificación</label>
+            <select style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border);">
+              <option value="5">⭐⭐⭐⭐⭐ Excelente</option>
+              <option value="4">⭐⭐⭐⭐ Muy bueno</option>
+              <option value="3">⭐⭐⭐ Bueno</option>
+              <option value="2">⭐⭐ Regular</option>
+              <option value="1">⭐ Malo</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>Tu comentario</label>
+            <textarea rows="4" placeholder="Cuéntanos tu experiencia..."></textarea>
+          </div>
+          <button class="btn-main" onclick="alert('¡Gracias por tu valoración!')">Enviar Valoración</button>
+        </div>
+      </section>
+
+      <!-- VISTA: ACERCA DE -->
+      <section id="view-acerca" class="view">
+        <div class="card">
+          <h2 style="color: var(--primary); margin-bottom: 1rem;">Acerca de Viajes Perdomo</h2>
+          <p style="line-height: 1.6; color: var(--muted);">Somos una agencia cubana dedicada a brindar el mejor servicio de transporte interprovincial. Con años de experiencia, conectamos las principales ciudades del país con modernas guaguas Yutong, garantizando comodidad, seguridad y puntualidad en cada viaje.</p>
+          <p style="margin-top: 1rem; line-height: 1.6; color: var(--muted);">Nuestro compromiso es que llegues a tu destino de la mejor manera posible.</p>
+        </div>
+      </section>
+
     </div>
-
-    <main>
-      <div class="filters" id="filtros">
-        <button class="chip active" data-filter="all">Todas</button>
-        <button class="chip" data-filter="este">🛣️ Este</button>
-        <button class="chip" data-filter="centro">🛣️ Centro</button>
-        <button class="chip" data-filter="oeste">🛣️ Oeste</button>
-        <button class="chip" data-filter="especial">⭐ Especiales</button>
-      </div>
-      <div class="trips-grid" id="trips-grid"></div>
-    </main>
   </div>
 
   <!-- MODAL RESERVA -->
@@ -205,6 +362,7 @@
     let USER = null;
     let isRegisterMode = false;
     let viajeSeleccionado = null;
+    let todasLasReservas = [];
 
     const $ = (s) => document.querySelector(s);
 
@@ -218,19 +376,16 @@
     }
 
     // ==========================================
-    // 1. FLUJO SPLASH -> LOGIN/APP (CORREGIDO)
+    // 1. FLUJO SPLASH -> LOGIN/APP
     // ==========================================
     window.addEventListener('DOMContentLoaded', () => {
-      // Ocultar splash a los 2 segundos, pase lo que pase
       setTimeout(() => {
         const splash = $('#splash-screen');
         if (splash) {
           splash.classList.add('hidden');
-          // Quitarlo del DOM después de la transición
           setTimeout(() => splash.style.display = 'none', 500); 
         }
         
-        // Verificar si hay sesión guardada
         try {
           const savedUser = localStorage.getItem('vp_user');
           if (savedUser) {
@@ -240,7 +395,6 @@
             $('#login-screen').classList.add('active');
           }
         } catch (e) {
-          console.error("Error leyendo localStorage", e);
           $('#login-screen').classList.add('active');
         }
       }, 2000);
@@ -283,17 +437,9 @@
           body: JSON.stringify(payload)
         });
         
-        // Manejo de errores si el servidor no responde con JSON
-        let data;
-        try {
-          data = await res.json();
-        } catch (e) {
-          throw new Error('El servidor no responde correctamente.');
-        }
-
+        let data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Error en la petición');
 
-        // Éxito
         USER = data.usuario;
         localStorage.setItem('vp_user', JSON.stringify(USER));
         mostrarToast(`Bienvenido, ${USER.nombre}`);
@@ -303,50 +449,64 @@
       }
     });
 
-    // Simulación de Google Login
-    $('#btn-google').addEventListener('click', async () => {
-      const emailSimulado = prompt("Simulando Google Login.\nIngresa tu correo de Gmail:", "usuario@gmail.com");
-      if (!emailSimulado) return;
-
-      try {
-        let res = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: emailSimulado, password: 'google-auth-temp' })
-        });
-
-        let data = await res.json();
-
-        if (!res.ok) {
-          res = await fetch('/api/auth/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nombre: emailSimulado.split('@')[0], email: emailSimulado, password: 'google-auth-temp' })
-          });
-          data = await res.json();
-        }
-
-        if (!data.usuario) throw new Error("Error en autenticación Google");
-
-        USER = data.usuario;
-        localStorage.setItem('vp_user', JSON.stringify(USER));
-        mostrarToast(`Bienvenido, ${USER.nombre}`);
-        iniciarApp();
-
-      } catch (error) {
-        mostrarToast(error.message || 'Error con Google Login', 'error');
-      }
-    });
-
-    $('#btn-logout').addEventListener('click', () => {
+    $('#btn-logout-sidebar').addEventListener('click', () => {
       localStorage.removeItem('vp_user');
       USER = null;
       $('#main-app').classList.remove('active');
       $('#login-screen').classList.add('active');
+      $('#sidebar').classList.remove('open');
+      $('#sidebar-overlay').classList.remove('active');
+      mostrarToast('Sesión cerrada');
     });
 
     // ==========================================
-    // 3. INICIAR APP (Cargar datos)
+    // 3. LÓGICA DEL SIDEBAR Y VISTAS
+    // ==========================================
+    $('#btn-menu').addEventListener('click', () => {
+      $('#sidebar').classList.add('open');
+      $('#sidebar-overlay').classList.add('active');
+    });
+
+    $('#sidebar-overlay').addEventListener('click', () => {
+      $('#sidebar').classList.remove('open');
+      $('#sidebar-overlay').classList.remove('active');
+    });
+
+    document.querySelectorAll('.sidebar-menu li[data-target]').forEach(item => {
+      item.addEventListener('click', () => {
+        // Quitar activo de todos los menús
+        document.querySelectorAll('.sidebar-menu li').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+
+        // Ocultar todas las vistas
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        
+        // Mostrar la vista seleccionada
+        const targetId = item.dataset.target;
+        $('#' + targetId).classList.add('active');
+
+        // Actualizar título del header
+        $('#header-title').textContent = item.textContent.replace(/[^\w\sáéíóúÁÉÍÓÚñÑ]/gi, '').trim();
+
+        // Cerrar sidebar en móvil
+        if (window.innerWidth < 768) {
+          $('#sidebar').classList.remove('open');
+          $('#sidebar-overlay').classList.remove('active');
+        }
+
+        // Lógica específica al cambiar de vista
+        if (targetId === 'view-reservas') {
+          cargarMisReservas();
+        }
+        if (targetId === 'view-perfil') {
+          $('#perfil-nombre').value = USER.nombre;
+          $('#perfil-email').value = USER.email;
+        }
+      });
+    });
+
+    // ==========================================
+    // 4. INICIAR APP Y DATOS
     // ==========================================
     function iniciarApp() {
       $('#login-screen').classList.remove('active');
@@ -362,14 +522,74 @@
         GUAGUAS = await res.json();
         renderGuaguas();
       } catch (error) {
-        mostrarToast('Error cargando guaguas. Revisa el servidor.', 'error');
-        console.error(error);
+        mostrarToast('Error cargando guaguas.', 'error');
       }
     }
 
+    async function cargarMisReservas() {
+      const contenedor = $('#lista-reservas');
+      contenedor.innerHTML = '<p>Cargando reservas...</p>';
+      
+      try {
+        const res = await fetch('/api/reservas');
+        if (!res.ok) throw new Error('Error al cargar reservas');
+        todasLasReservas = await res.json();
+        
+        // Filtrar solo las del usuario logueado
+        const misReservas = todasLasReservas.filter(r => r.email === USER.email);
+
+        if (misReservas.length === 0) {
+          contenedor.innerHTML = '<div class="card"><p>No tienes reservas realizadas aún.</p></div>';
+          return;
+        }
+
+        contenedor.innerHTML = misReservas.map(r => `
+          <div class="reserva-card">
+            <div class="reserva-header">
+              <span>Código: ${r.codigo}</span>
+              <span class="badge-status status-${r.estado}">${r.estado}</span>
+            </div>
+            <div class="reserva-body">
+              <p><strong>Destino:</strong> ${r.nombre ? r.nombre : 'Viaje'}</p>
+              <p><strong>Fecha de viaje:</strong> ${r.fechaViaje}</p>
+              <p><strong>Pasajeros:</strong> ${r.cantidad}</p>
+              <p><strong>Total:</strong> ${r.total} ${r.moneda}</p>
+              ${r.estado !== 'cancelada' ? `<button class="btn-cancelar" onclick="cancelarReserva('${r.id}')">Cancelar Reserva</button>` : ''}
+            </div>
+          </div>
+        `).join('');
+      } catch (error) {
+        contenedor.innerHTML = '<p>Error al cargar las reservas.</p>';
+      }
+    }
+
+    // Función global para cancelar
+    window.cancelarReserva = async (id) => {
+      if (!confirm('¿Estás seguro de que deseas cancelar esta reserva?')) return;
+      
+      try {
+        const res = await fetch(`/api/reservas/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ estado: 'cancelada' })
+        });
+        
+        if (!res.ok) throw new Error('Error al cancelar');
+        
+        mostrarToast('Reserva cancelada correctamente');
+        cargarMisReservas(); // Recargar la lista
+        cargarGuaguas(); // Recargar guaguas por si se devolvieron asientos
+      } catch (error) {
+        mostrarToast('No se pudo cancelar la reserva', 'error');
+      }
+    };
+
+    // ==========================================
+    // 5. RENDERIZADO DE GUAGUAS Y RESERVA
+    // ==========================================
     function renderGuaguas() {
       const grid = $('#trips-grid');
-      const filtro = $('.chip.active').dataset.filter;
+      const filtro = document.querySelector('.chip.active').dataset.filter;
       const origen = $('#origen').value;
       const destino = $('#destino').value;
 
@@ -406,9 +626,6 @@
       `).join('');
     }
 
-    // ==========================================
-    // 4. LÓGICA DE RESERVA
-    // ==========================================
     window.abrirModal = (id) => {
       viajeSeleccionado = GUAGUAS.find(v => v.id === id);
       if(!viajeSeleccionado) return;
