@@ -19,6 +19,7 @@ const GITHUB_OWNER = process.env.GITHUB_OWNER;
 const GITHUB_REPO = process.env.GITHUB_REPO;
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 
+// Función central para llamar a la API de GitHub
 const githubApi = async (endpoint, options = {}) => {
   const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${endpoint}`, {
     ...options,
@@ -29,10 +30,23 @@ const githubApi = async (endpoint, options = {}) => {
       ...options.headers
     }
   });
-  if (!res.ok && res.status !== 404) throw new Error(`GitHub API Error: ${res.statusText}`);
+  
+  if (res.status === 401) {
+    console.error("❌ ERROR 401: Token de GitHub inválido o sin permisos.");
+    throw new Error("Token de GitHub inválido");
+  }
+  if (res.status === 404) {
+    return res; // 404 es normal si el archivo aún no existe
+  }
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    console.error(`❌ ERROR DE GITHUB (${res.status}):`, errorData.message || res.statusText);
+    throw new Error(`GitHub API Error: ${res.status}`);
+  }
   return res;
 };
 
+// Leer un archivo JSON desde GitHub
 async function leerJSON(nombreArchivo) {
   try {
     const res = await githubApi(`${nombreArchivo}.json?ref=${GITHUB_BRANCH}`);
@@ -46,55 +60,66 @@ async function leerJSON(nombreArchivo) {
   }
 }
 
+// Escribir un archivo JSON en GitHub (crear o actualizar)
 async function guardarJSON(nombreArchivo, contenidoJSON) {
   try {
     const existente = await leerJSON(nombreArchivo);
     const body = {
-      message: `Actualizar ${nombreArchivo}.json`,
+      message: `Actualizar ${nombreArchivo}.json desde Viajes Perdomos`,
       content: Buffer.from(JSON.stringify(contenidoJSON, null, 2)).toString('base64'),
       branch: GITHUB_BRANCH
     };
+    
+    // Si el archivo ya existe, necesitamos pasarle el SHA para actualizarlo
     if (existente) body.sha = existente.sha;
 
     const res = await githubApi(`${nombreArchivo}.json`, {
       method: 'PUT',
       body: JSON.stringify(body)
     });
-    if (!res.ok) throw new Error('Error guardando en GitHub');
+    
+    if (!res.ok) {
+      throw new Error(`Falló el guardado de ${nombreArchivo}`);
+    }
+    console.log(`✅ ${nombreArchivo}.json guardado en GitHub`);
     return true;
   } catch (error) {
-    console.error(`Error guardando ${nombreArchivo}:`, error.message);
+    console.error(`❌ Error guardando ${nombreArchivo}:`, error.message);
     throw error;
   }
 }
 
 // ==========================================
-// DATOS INICIALES (SEED) SEGURO
+// DATOS INICIALES (SEED)
 // ==========================================
 async function inicializarDatos() {
-  // 1. Guaguas
-  const guaguas = await leerJSON('guaguas');
-  if (!guaguas) {
-    console.log('🌱 Creando guaguas.json...');
-    const guaguasIniciales = [
-      { id: "1", unidad: "Yutong A1", region: "este", origen: "La Habana", destino: "Santiago de Cuba", precio: 8500, moneda: "CUP", duracion: "12h 30min", salida: "18:00", asientos: 45, asientosDisp: 45, oferta: true, activa: true, imagen: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&q=80", descripcion: "Guagua Yutong de larga distancia." },
-      { id: "2", unidad: "Yutong B2", region: "oeste", origen: "La Habana", destino: "Varadero", precio: 1200, moneda: "CUP", duracion: "2h 30min", salida: "08:00", asientos: 30, asientosDisp: 30, oferta: false, activa: true, imagen: "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=800&q=80", descripcion: "Guagua climatizada." }
-    ];
-    await guardarJSON('guaguas', guaguasIniciales);
-  }
+  try {
+    // 1. Guaguas
+    const guaguas = await leerJSON('guaguas');
+    if (!guaguas) {
+      console.log('🌱 Creando guaguas.json...');
+      const guaguasIniciales = [
+        { id: "1", unidad: "Yutong A1", region: "este", origen: "La Habana", destino: "Santiago de Cuba", precio: 8500, moneda: "CUP", duracion: "12h 30min", salida: "18:00", asientos: 45, asientosDisp: 45, oferta: true, activa: true, imagen: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&q=80", descripcion: "Guagua Yutong de larga distancia." },
+        { id: "2", unidad: "Yutong B2", region: "oeste", origen: "La Habana", destino: "Varadero", precio: 1200, moneda: "CUP", duracion: "2h 30min", salida: "08:00", asientos: 30, asientosDisp: 30, oferta: false, activa: true, imagen: "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=800&q=80", descripcion: "Guagua climatizada." }
+      ];
+      await guardarJSON('guaguas', guaguasIniciales);
+    }
 
-  // 2. Reservas
-  const reservas = await leerJSON('reservas');
-  if (!reservas) {
-    console.log('🌱 Creando reservas.json...');
-    await guardarJSON('reservas', []);
-  }
+    // 2. Reservas
+    const reservas = await leerJSON('reservas');
+    if (!reservas) {
+      console.log('🌱 Creando reservas.json...');
+      await guardarJSON('reservas', []);
+    }
 
-  // 3. Usuarios (El que faltaba o fallaba)
-  const usuarios = await leerJSON('usuarios');
-  if (!usuarios) {
-    console.log('🌱 Creando usuarios.json...');
-    await guardarJSON('usuarios', []);
+    // 3. Usuarios
+    const usuarios = await leerJSON('usuarios');
+    if (!usuarios) {
+      console.log('🌱 Creando usuarios.json...');
+      await guardarJSON('usuarios', []);
+    }
+  } catch (error) {
+    console.error("⚠️ Error inicializando datos (revisa el token):", error.message);
   }
 }
 
@@ -144,7 +169,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // ==========================================
-// ENDPOINTS: GUAGUAS Y RESERVAS
+// ENDPOINTS: GUAGUAS
 // ==========================================
 app.get('/api/guaguas', async (req, res) => {
   const data = await leerJSON('guaguas');
@@ -152,31 +177,47 @@ app.get('/api/guaguas', async (req, res) => {
 });
 
 app.post('/api/guaguas', async (req, res) => {
-  const actual = await leerJSON('guaguas');
-  const lista = actual ? actual.data : [];
-  const nueva = { ...req.body, id: Date.now().toString() };
-  lista.push(nueva);
-  await guardarJSON('guaguas', lista);
-  res.status(201).json(nueva);
+  try {
+    const actual = await leerJSON('guaguas');
+    const lista = actual ? actual.data : [];
+    const nueva = { ...req.body, id: Date.now().toString() };
+    lista.push(nueva);
+    await guardarJSON('guaguas', lista);
+    res.status(201).json(nueva);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al crear guagua' });
+  }
 });
 
 app.put('/api/guaguas/:id', async (req, res) => {
-  const actual = await leerJSON('guaguas');
-  const lista = actual ? actual.data : [];
-  const index = lista.findIndex(g => g.id === req.params.id);
-  if (index === -1) return res.status(404).json({ error: 'No encontrada' });
-  lista[index] = { ...lista[index], ...req.body };
-  await guardarJSON('guaguas', lista);
-  res.json(lista[index]);
+  try {
+    const actual = await leerJSON('guaguas');
+    const lista = actual ? actual.data : [];
+    const index = lista.findIndex(g => g.id === req.params.id);
+    if (index === -1) return res.status(404).json({ error: 'No encontrada' });
+    
+    lista[index] = { ...lista[index], ...req.body };
+    await guardarJSON('guaguas', lista);
+    res.json(lista[index]);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar guagua' });
+  }
 });
 
 app.delete('/api/guaguas/:id', async (req, res) => {
-  const actual = await leerJSON('guaguas');
-  const lista = actual ? actual.data.filter(g => g.id !== req.params.id) : [];
-  await guardarJSON('guaguas', lista);
-  res.json({ ok: true });
+  try {
+    const actual = await leerJSON('guaguas');
+    const lista = actual ? actual.data.filter(g => g.id !== req.params.id) : [];
+    await guardarJSON('guaguas', lista);
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar guagua' });
+  }
 });
 
+// ==========================================
+// ENDPOINTS: RESERVAS
+// ==========================================
 app.get('/api/reservas', async (req, res) => {
   const data = await leerJSON('reservas');
   res.json(data ? data.data : []);
@@ -190,7 +231,7 @@ app.post('/api/reservas', async (req, res) => {
     const gIndex = guaguas.findIndex(g => g.id === guaguaId);
     
     if (gIndex === -1) return res.status(404).json({ error: 'Guagua no encontrada' });
-    if (guaguas[gIndex].asientosDisp < cantidad) return res.status(400).json({ error: 'Sin asientos' });
+    if (guaguas[gIndex].asientosDisp < cantidad) return res.status(400).json({ error: 'Sin asientos disponibles' });
 
     const reservasData = await leerJSON('reservas');
     const reservas = reservasData ? reservasData.data : [];
@@ -205,8 +246,11 @@ app.post('/api/reservas', async (req, res) => {
       createdAt: new Date().toISOString()
     };
     reservas.push(nuevaReserva);
+    
+    // Descontar asientos
     guaguas[gIndex].asientosDisp -= cantidad;
 
+    // Guardar ambos archivos
     await guardarJSON('reservas', reservas);
     await guardarJSON('guaguas', guaguas);
 
@@ -216,10 +260,49 @@ app.post('/api/reservas', async (req, res) => {
   }
 });
 
+app.put('/api/reservas/:id', async (req, res) => {
+  try {
+    const reservasData = await leerJSON('reservas');
+    const reservas = reservasData ? reservasData.data : [];
+    const index = reservas.findIndex(r => r.id === req.params.id);
+    if (index === -1) return res.status(404).json({ error: 'No encontrada' });
+
+    // Si se cancela, devolver asientos
+    if (req.body.estado === 'cancelada' && reservas[index].estado !== 'cancelada') {
+      const guaguasData = await leerJSON('guaguas');
+      if (guaguasData) {
+        const guaguas = guaguasData.data;
+        const gIndex = guaguas.findIndex(g => g.id === reservas[index].guaguaId);
+        if (gIndex !== -1) {
+          guaguas[gIndex].asientosDisp += reservas[index].cantidad;
+          await guardarJSON('guaguas', guaguas);
+        }
+      }
+    }
+
+    reservas[index] = { ...reservas[index], ...req.body };
+    await guardarJSON('reservas', reservas);
+    res.json(reservas[index]);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar reserva' });
+  }
+});
+
+app.delete('/api/reservas/:id', async (req, res) => {
+  try {
+    const reservasData = await leerJSON('reservas');
+    const reservas = reservasData ? reservasData.data.filter(r => r.id !== req.params.id) : [];
+    await guardarJSON('reservas', reservas);
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar reserva' });
+  }
+});
+
 // ==========================================
-// ARRANCAR
+// ARRANCAR SERVIDOR
 // ==========================================
 const PORT = process.env.PORT || 3000;
 inicializarDatos().then(() => {
-  app.listen(PORT, () => console.log(`🚀 Servidor en puerto ${PORT}`));
+  app.listen(PORT, () => console.log(`🚀 Servidor Viajes Perdomos en puerto ${PORT}`));
 });
