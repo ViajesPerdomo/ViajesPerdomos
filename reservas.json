@@ -1,1 +1,17 @@
-[]
+[
+  {
+    "nombre": "Kendry ",
+    "email": "dgrisel940@gmail.com",
+    "ci": "03112074649",
+    "telefono": "53948837",
+    "guaguaId": "1",
+    "fechaViaje": "2026-11-10",
+    "cantidad": 2,
+    "id": "1794276022183",
+    "codigo": "VP-TG7F83",
+    "total": 17000,
+    "moneda": "CUP",
+    "estado": "pendiente",
+    "createdAt": "2026-11-10T02:00:22.183Z"
+  }
+]
