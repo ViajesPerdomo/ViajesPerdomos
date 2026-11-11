@@ -11,15 +11,11 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' })); 
 app.use(express.static(path.join(__dirname, '../public')));
 
-// ==========================================
-// CONFIGURACIÓN DE GITHUB
-// ==========================================
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const GITHUB_OWNER = process.env.GITHUB_OWNER;
 const GITHUB_REPO = process.env.GITHUB_REPO;
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 
-// CACHÉ EN MEMORIA
 const cache = { guaguas: null, reservas: null, usuarios: null, credenciales: null, config: null };
 
 const githubApi = async (endpoint, options = {}) => {
@@ -132,7 +128,6 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (error) { res.status(500).json({ error: 'Error al iniciar sesión' }); }
 });
 
-// NUEVO: Gestión de clientes de la PWA (Admin)
 app.get('/api/usuarios', async (req, res) => {
   try {
     const data = await leerJSON('usuarios');
@@ -153,7 +148,6 @@ app.post('/api/usuarios', async (req, res) => {
   } catch (error) { res.status(500).json({ error: 'Error al crear usuario' }); }
 });
 
-// NUEVO: Editar perfil (usado por el cliente y el admin)
 app.put('/api/usuarios/:id', async (req, res) => {
   try {
     const actual = await leerJSON('usuarios', true);
@@ -275,13 +269,29 @@ app.put('/api/reservas/:id', async (req, res) => {
     const index = reservas.findIndex(r => r.id === req.params.id);
     if (index === -1) return res.status(404).json({ error: 'No encontrada' });
 
-    if ((req.body.estado === 'cancelada' || req.body.estado === 'completada') && reservas[index].estado !== 'cancelada' && reservas[index].estado !== 'completada') {
+    const estadoAnterior = reservas[index].estado;
+    const estadoNuevo = req.body.estado;
+
+    // Lógica de devolución de asientos
+    if (estadoNuevo === 'cancelada' && estadoAnterior !== 'cancelada') {
+      // Si se cancela, devolvemos asientos
       const guaguasData = await leerJSON('guaguas', true);
       if (guaguasData) {
         const guaguas = guaguasData.data;
         const gIndex = guaguas.findIndex(g => g.id === reservas[index].guaguaId);
         if (gIndex !== -1) {
           guaguas[gIndex].asientosDisp += reservas[index].cantidad;
+          await guardarJSON('guaguas', guaguas, guaguasData.sha);
+        }
+      }
+    } else if (estadoNuevo === 'pendiente' && (estadoAnterior === 'cancelada' || estadoAnterior === 'completada')) {
+      // Si se revierte a pendiente, restamos asientos de nuevo (porque ya se habían devuelto)
+      const guaguasData = await leerJSON('guaguas', true);
+      if (guaguasData) {
+        const guaguas = guaguasData.data;
+        const gIndex = guaguas.findIndex(g => g.id === reservas[index].guaguaId);
+        if (gIndex !== -1 && guaguas[gIndex].asientosDisp >= reservas[index].cantidad) {
+          guaguas[gIndex].asientosDisp -= reservas[index].cantidad;
           await guardarJSON('guaguas', guaguas, guaguasData.sha);
         }
       }
@@ -304,7 +314,7 @@ app.delete('/api/reservas/:id', async (req, res) => {
 });
 
 // ==========================================
-// ENDPOINTS: CREDENCIALES (ADMIN/GESTORES)
+// ENDPOINTS: CREDENCIALES Y CONFIG
 // ==========================================
 app.get('/api/credenciales', async (req, res) => {
   try {
@@ -348,9 +358,6 @@ app.delete('/api/credenciales/:id', async (req, res) => {
   } catch (error) { res.status(500).json({ error: 'Error eliminar' }); }
 });
 
-// ==========================================
-// ENDPOINTS: CONFIGURACIÓN
-// ==========================================
 app.get('/api/config', async (req, res) => {
   try {
     const data = await leerJSON('config');
@@ -367,9 +374,6 @@ app.put('/api/config', async (req, res) => {
   } catch (error) { res.status(500).json({ error: 'Error guardar config' }); }
 });
 
-// ==========================================
-// ARRANCAR SERVIDOR
-// ==========================================
 const PORT = process.env.PORT || 3000;
 inicializarDatos().then(() => {
   app.listen(PORT, () => console.log(`🚀 Servidor en puerto ${PORT}`));
