@@ -12,5 +12,12 @@
     "email": "dgrisel@gmail.com",
     "password": "123",
     "gestorCodigo": "Lisvania"
+  },
+  {
+    "nombre": "León ",
+    "email": "dgrisel940@gmail.com",
+    "password": "1234",
+    "gestorCodigo": "admin_manual",
+    "id": "1794420448079"
   }
 ]
