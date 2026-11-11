@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1e293b" />
+  <title>Viajes Perdomo · Panel Admin</title>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #0f766e; --primary-light: #14b8a6; --accent: #f59e0b;
+      --dark: #1e293b; --dark-2: #0f172a; --bg: #f1f5f9; --card: #ffffff;
+      --text: #0f172a; --muted: #64748b; --border: #e2e8f0;
+      --danger: #dc2626; --warning: #d97706; --success: #16a34a;
+      --radius: 12px; --sidebar-w: 260px;
+    }
+    html { -webkit-text-size-adjust: 100%; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* Login y Layout General */
+    .login-screen { position: fixed; inset: 0; background: var(--dark-2); display: flex; align-items: center; justify-content: center; z-index: 3000; }
+    .login-screen.hidden { display: none; }
+    .login-card { background: white; border-radius: var(--radius); padding: 2rem 1.5rem; width: 100%; max-width: 380px; }
+    .login-card h2 { text-align: center; color: var(--primary); margin-bottom: 1.5rem; }
+    .field { margin-bottom: 1rem; }
+    .field label { display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.3rem; }
+    .field input, .field select, .field textarea { width: 100%; padding: 0.7rem; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; }
+    .btn-login { width: 100%; background: var(--primary); color: white; border: none; padding: 0.8rem; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .app { display: none; min-height: 100vh; }
+    .app.visible { display: block; }
+    .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); opacity: 0; visibility: hidden; transition: 0.3s; z-index: 250; }
+    .sidebar-overlay.open { opacity: 1; visibility: visible; }
+    .sidebar { position: fixed; top: 0; left: 0; width: var(--sidebar-w); height: 100vh; background: var(--dark-2); color: white; z-index: 300; transform: translateX(-100%); transition: 0.3s; display: flex; flex-direction: column; }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-header { padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; }
+    .sidebar-nav { padding: 1rem 0.5rem; flex: 1; overflow-y: auto; }
+    .nav-item { display: flex; align-items: center; gap: 0.8rem; width: 100%; background: none; border: none; color: #cbd5e1; padding: 0.8rem 1rem; border-radius: 8px; cursor: pointer; text-align: left; font-size: 0.95rem; font-weight: 600; }
+    .nav-item:hover, .nav-item.active { background: var(--primary); color: white; }
+    .topbar { background: var(--dark); color: white; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 200; }
+    .btn-menu { background: rgba(255,255,255,0.1); border: none; color: white; padding: 0.5rem; border-radius: 8px; cursor: pointer; }
+    .content { padding: 1rem; max-width: 1200px; margin: 0 auto; }
+    .view { display: none; }
+    .view.active { display: block; }
+    .view-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+    .btn-primary { background: var(--primary); color: white; border: none; padding: 0.6rem 1rem; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .btn-secondary { background: white; border: 1px solid var(--border); padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; }
+    .btn-danger { background: var(--danger); color: white; border: none; padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; }
+
+    /* Listas y Tarjetas */
+    .list { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+    .item-card { background: white; border-radius: var(--radius); padding: 1rem; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: relative; }
+    .item-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+    .item-title { font-weight: 800; font-size: 1.1rem; }
+    .item-price { background: var(--accent); color: white; padding: 0.2rem 0.6rem; border-radius: 20px; font-weight: bold; font-size: 0.85rem; }
+    .item-actions { display: flex; gap: 0.5rem; margin-top: 0.8rem; flex-wrap: wrap; }
+    .item-actions button, .item-actions select { flex: 1; min-width: 80px; }
+    .estado { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
+    .estado.pendiente { background: #fef3c7; color: #92400e; }
+    .estado.confirmada { background: #dcfce7; color: #166534; }
+    .estado.cancelada { background: #fee2e2; color: #991b1b; }
+    .estado.completada { background: #dbeafe; color: #1e40af; }
+    .estado.cancelada_admin { background: #fca5a5; color: #7f1d1d; }
+
+    /* Colores de Estado de Guaguas */
+    .card-guagua-roja { border-left: 5px solid var(--danger); }
+    .card-guagua-verde { border-left: 5px solid var(--success); }
+    .card-guagua-amarilla { border-left: 5px solid var(--warning); }
+    .card-guagua-naranja { border-left: 5px solid #f97316; }
+
+    /* Modales */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: white; width: 100%; max-width: 600px; border-radius: var(--radius); max-height: 90vh; overflow-y: auto; }
+    .modal-header { padding: 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .modal-body { padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+    .modal-footer { padding: 1rem; border-top: 1px solid var(--border); display: flex; gap: 0.5rem; }
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    
+    /* Filtros Avanzados */
+    .filter-bar { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; background: white; padding: 0.8rem; border-radius: var(--radius); }
+    .filter-bar input, .filter-bar select { padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; }
+
+    /* Notificaciones */
+    .toast-banner { position: fixed; top: 20px; right: 20px; background: var(--danger); color: white; padding: 1rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 9999; display: none; cursor: pointer; animation: slideIn 0.3s; }
+    @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    .notif-card { border-left: 4px solid var(--primary); }
+    .notif-card.no-leida { background: #fefce8; }
+    .notif-card.critica { border-left-color: var(--danger); background: #fef2f2; }
+    .notif-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; flex-wrap: wrap; }
+    .cliente-afectado { display: flex; justify-content: space-between; align-items: center; background: var(--bg); padding: 0.5rem; border-radius: 6px; margin-bottom: 0.3rem; }
+
+    /* Chofer Foto */
+    .chofer-foto { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border); background: #e2e8f0; display: block; margin: 0 auto 0.5rem; cursor: pointer; }
+
+    /* Calendario Recurrente */
+    .dias-semana { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+    .dia-check { display: flex; align-items: center; gap: 0.2rem; background: var(--bg); padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.9rem; }
+
+    @media (min-width: 768px) {
+      .list { grid-template-columns: repeat(2, 1fr); }
+      .btn-menu { display: none; }
+      .sidebar { transform: translateX(0); }
+      .sidebar-overlay { display: none !important; }
+      .app.visible .topbar, .app.visible .content { margin-left: var(--sidebar-w); }
+      .content { padding: 2rem; }
+    }
+    @media (min-width: 1024px) {
+      .list { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-screen" id="login-screen">
+    <div class="login-card">
+      <h2>🚌 Panel de Control</h2>
+      <div class="field"><label>Usuario</label><input type="text" id="login-user" /></div>
+      <div class="field"><label>Contraseña</label><input type="password" id="login-pass" /></div>
+      <button class="btn-login" id="btn-login">Entrar</button>
+    </div>
+  </div>
+
+  <div class="app" id="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header"><strong>Viajes Perdomo</strong><button class="btn-menu" id="btn-close-sidebar">✕</button></div>
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-view="dashboard">📊 Dashboard</button>
+        <button class="nav-item" data-view="rutas" id="nav-rutas">🛣️ Rutas</button>
+        <button class="nav-item" data-view="guaguas" id="nav-guaguas">🚌 Guaguas</button>
+        <button class="nav-item" data-view="choferes" id="nav-choferes">🧑‍✈️ Choferes</button>
+        <button class="nav-item" data-view="reservas" id="nav-reservas">🎫 Reservas</button>
+        <button class="nav-item" data-view="clientes" id="nav-clientes">👥 Clientes PWA</button>
+        <button class="nav-item" data-view="credenciales" id="nav-credenciales">🛡️ Credenciales</button>
+        <button class="nav-item" data-view="notificaciones" id="nav-notificaciones">🔔 Notificaciones <span id="notif-badge" style="background: var(--danger); color: white; padding: 0.1rem 0.4rem; border-radius: 50%; font-size: 0.7rem; display: none;">0</span></button>
+        <button class="nav-item" data-view="personalizar" id="nav-personalizar">🎨 Personalizar App</button>
+        <button class="nav-item" data-view="escaner" id="nav-escaner">📷 Escanear QR</button>
+      </nav>
+    </aside>
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <header class="topbar">
+      <div style="display:flex; align-items:center; gap:1rem;">
+        <button class="btn-menu" id="btn-menu">☰</button>
+        <strong id="topbar-title">Panel</strong>
+      </div>
+      <div style="display: flex; align-items: center; gap: 1rem;">
+        <button class="btn-secondary" id="btn-logout">Salir</button>
+      </div>
+    </header>
+
+    <!-- BANNER FLOTANTE DE NOTIFICACIONES -->
+    <div class="toast-banner" id="toast-banner" onclick="document.querySelector('[data-view=\'notificaciones\']').click()">
+      🔔 Tienes <strong id="toast-count">0</strong> notificaciones pendientes. Haz clic para verlas.
+    </div>
+
+    <main class="content">
+      <!-- DASHBOARD -->
+      <section class="view active" id="view-dashboard">
+        <h2>Resumen General</h2>
+        <div class="stat-grid">
+          <div class="item-card"><h3>Guaguas Activas</h3><div id="stat-guaguas" style="font-size:2rem; font-weight:800;">0</div></div>
+          <div class="item-card"><h3>Reservas Pendientes</h3><div id="stat-reservas" style="font-size:2rem; font-weight:800;">0</div></div>
+        </div>
+      </section>
+
+      <!-- RUTAS -->
+      <section class="view" id="view-rutas">
+        <div class="view-header"><h2>Rutas (Orígenes y Destinos)</h2></div>
+        <div class="row-2" style="margin-bottom: 1rem;">
+          <div class="item-card">
+            <h3>Orígenes</h3>
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+              <input type="text" id="nuevo-origen-input" placeholder="Nuevo Origen" style="flex:1; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;" />
+              <button class="btn-primary" onclick="agregarOrigen()">➕</button>
+            </div>
+            <div id="lista-origenes" style="margin-top: 1rem;"></div>
+          </div>
+          <div class="item-card">
+            <h3>Destinos</h3>
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+              <input type="text" id="nuevo-destino-input" placeholder="Nuevo Destino" style="flex:1; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;" />
+              <button class="btn-primary" onclick="agregarDestino()">➕</button>
+            </div>
+            <div id="lista-destinos" style="margin-top: 1rem;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- GUAGUAS -->
+      <section class="view" id="view-guaguas">
+        <div class="view-header">
+          <h2>Flota de Guaguas</h2>
+          <button class="btn-primary" id="btn-nueva-guagua">➕ Nueva Guagua</button>
+        </div>
+        
+        <div class="filter-bar">
+          <select id="filtro-estado-guagua">
+            <option value="">Todos los Estados</option>
+            <option value="funcionamiento">En Funcionamiento</option>
+            <option value="taller">En el Taller</option>
+            <option value="ruta">En Ruta</option>
+          </select>
+          <select id="filtro-chofer-guagua">
+            <option value="">Todos los Choferes</option>
+            <option value="sin_chofer">Sin Chofer Asignado</option>
+          </select>
+          <select id="filtro-ruta-guagua">
+            <option value="">Todas las Rutas</option>
+            <option value="sin_origen">Sin Origen</option>
+            <option value="sin_destino">Sin Destino</option>
+            <option value="sin_ambos">Sin Origen ni Destino</option>
+            <option value="completa">Ruta Completa</option>
+          </select>
+          <input type="date" id="filtro-fecha-guagua" title="Filtrar por fecha" />
+          <button class="btn-secondary" onclick="renderGuaguas()">🔄 Filtrar</button>
+        </div>
+
+        <div class="list" id="lista-guaguas"></div>
+      </section>
+
+      <!-- CHOFERES -->
+      <section class="view" id="view-choferes">
+        <div class="view-header">
+          <h2>Choferes</h2>
+          <button class="btn-primary" id="btn-nuevo-chofer">➕ Nuevo Chofer</button>
+        </div>
+        <div class="list" id="lista-choferes"></div>
+      </section>
+
+      <!-- RESERVAS -->
+      <section class="view" id="view-reservas">
+        <div class="view-header"><h2>Reservas</h2></div>
+        <div class="filter-bar">
+          <input type="date" id="filtro-fecha-reserva" />
+          <button class="btn-secondary" onclick="renderReservas()">🔄 Filtrar</button>
+        </div>
+        <div class="list" id="lista-reservas"></div>
+      </section>
+
+      <!-- CLIENTES -->
+      <section class="view" id="view-clientes">
+        <div class="view-header">
+          <h2>Clientes PWA</h2>
+          <button class="btn-primary" id="btn-nuevo-cliente">➕ Crear Cliente</button>
+        </div>
+        <div class="list" id="lista-clientes"></div>
+      </section>
+
+      <!-- CREDENCIALES -->
+      <section class="view" id="view-credenciales">
+        <div class="view-header">
+          <h2>Staff</h2>
+          <button class="btn-primary" id="btn-nueva-credencial">➕ Nuevo Staff</button>
+        </div>
+        <div class="list" id="lista-credenciales"></div>
+      </section>
+
+      <!-- NOTIFICACIONES -->
+      <section class="view" id="view-notificaciones">
+        <div class="view-header">
+          <h2>Centro de Notificaciones</h2>
+          <button class="btn-secondary" onclick="marcarTodasLeidas()">Marcar todas como leídas</button>
+        </div>
+        <div class="list" id="lista-notificaciones"></div>
+      </section>
+
+      <!-- PERSONALIZAR -->
+      <section class="view" id="view-personalizar">
+        <div class="view-header"><h2>Personalizar PWA</h2></div>
+        <div class="item-card" style="max-width: 600px; margin: 0 auto;">
+          <div class="field"><label>Título Hero</label><input type="text" id="pwa-hero-titulo" /></div>
+          <div class="field"><label>Subtítulo Hero</label><input type="text" id="pwa-hero-subtitulo" /></div>
+          <button class="btn-primary" id="btn-guardar-pwa" style="width: 100%; margin-top: 1rem;">Guardar</button>
+        </div>
+      </section>
+
+      <!-- ESCANER -->
+      <section class="view" id="view-escaner">
+        <div class="view-header">
+          <h2>Escanear QR</h2>
+          <button class="btn-secondary" onclick="descargarReservasOffline()">📥 Descargar Reservas (Offline)</button>
+        </div>
+        <div class="item-card" style="text-align: center;">
+          <div id="qr-reader"></div>
+          <div id="qr-resultado" class="result-card" style="display: none; margin-top: 1rem;"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- MODALES -->
+  <!-- Modal Guagua -->
+  <div class="modal-overlay" id="modal-guagua">
+    <div class="modal">
+      <div class="modal-header"><h3 id="modal-titulo-guagua">Guagua</h3><button class="btn-secondary" onclick="document.getElementById('modal-guagua').classList.remove('open')">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="g-id" />
+        <div class="field"><label>Placa (ID Único)</label><input type="text" id="g-placa" placeholder="Ej: A33" /></div>
+        
+        <div class="field"><label>Foto de la Guagua (Opcional)</label>
+          <input type="file" id="g-foto-file" accept="image/*" onchange="procesarFotoGuagua(this)" />
+          <div style="margin-top: 0.5rem;"><img id="g-foto-preview" src="" style="width: 100%; max-height: 120px; object-fit: cover; border-radius: 8px; display: none;" /></div>
+        </div>
+
+        <div class="row-2">
+          <div class="field"><label>Origen</label><select id="g-origen"></select></div>
+          <div class="field"><label>Destino</label><select id="g-destino"></select></div>
+        </div>
+        
+        <div class="row-2">
+          <div class="field"><label>Precio</label><input type="number" id="g-precio" /></div>
+          <div class="field"><label>Moneda</label><select id="g-moneda"><option value="CUP">CUP</option><option value="MLC">MLC</option></select></div>
+        </div>
+        
+        <div class="row-2">
+          <div class="field"><label>Hora Salida</label><input type="time" id="g-salida" /></div>
+          <div class="field"><label>Duración (Horas)</label><input type="number" id="g-duracion" value="2" step="0.5" /></div>
+        </div>
+        
+        <div class="row-2">
+          <div class="field"><label>Asientos</label><input type="number" id="g-asientos" /></div>
+          <div class="field"><label>Estado</label>
+            <select id="g-estado" onchange="toggleMotivoTaller()">
+              <option value="funcionamiento">En Funcionamiento</option>
+              <option value="taller">En el Taller</option>
+              <option value="ruta">En Ruta (Auto)</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="field" id="g-motivo-taller-div" style="display: none;"><label>Motivo del Taller</label><input type="text" id="g-motivo-taller" /></div>
+        
+        <div class="field"><label>Tipo de Programación</label>
+          <select id="g-tipo-programacion" onchange="toggleTipoProgramacion()">
+            <option value="unico">Día(s) Específico(s)</option>
+            <option value="recurrente">Recurrente (Ej: Todos los Jueves)</option>
+          </select>
+        </div>
+        
+        <div id="programacion-unica" class="field"><label>Fechas (Separadas por coma si son varias)</label><input type="text" id="g-fechas-unicas" placeholder="Ej: 2024-11-15, 2024-11-20" /></div>
+        
+        <div id="programacion-recurrente" style="display: none;">
+          <label>Días de la semana</label>
+          <div class="dias-semana">
+            <label class="dia-check"><input type="checkbox" value="1" class="dia-rec"> Lunes</label>
+            <label class="dia-check"><input type="checkbox" value="2" class="dia-rec"> Martes</label>
+            <label class="dia-check"><input type="checkbox" value="3" class="dia-rec"> Miércoles</label>
+            <label class="dia-check"><input type="checkbox" value="4" class="dia-rec"> Jueves</label>
+            <label class="dia-check"><input type="checkbox" value="5" class="dia-rec"> Viernes</label>
+            <label class="dia-check"><input type="checkbox" value="6" class="dia-rec"> Sábado</label>
+            <label class="dia-check"><input type="checkbox" value="0" class="dia-rec"> Domingo</label>
+          </div>
+          <p style="font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem;">Se generarán automáticamente los viajes para los próximos 3 meses.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="document.getElementById('modal-guagua').classList.remove('open')">Cancelar</button>
+        <button class="btn-primary" onclick="guardarGuagua()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Chofer -->
+  <div class="modal-overlay" id="modal-chofer">
+    <div class="modal">
+      <div class="modal-header"><h3 id="modal-titulo-chofer">Chofer</h3><button class="btn-secondary" onclick="document.getElementById('modal-chofer').classList.remove('open')">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="c-id-chofer" />
+        <div style="text-align: center;">
+          <img id="c-foto-preview" class="chofer-foto" src="https://cdn-icons-png.flaticon.com/512/149/149071.png" onclick="document.getElementById('c-foto-file').click()" />
+          <input type="file" id="c-foto-file" accept="image/*" style="display: none;" onchange="procesarFotoChofer(this)" />
+          <p style="font-size: 0.7rem; color: var(--muted);">Toca la imagen para cambiarla</p>
+        </div>
+        <div class="field"><label>Nombre y Apellidos</label><input type="text" id="c-nombre-chofer" /></div>
+        <div class="field"><label>Carnet de Identidad</label><input type="text" id="c-carnet" /></div>
+        <div class="field"><label>Teléfono</label><input type="tel" id="c-telefono" /></div>
+        
+        <div class="field"><label>Asignación de Trabajo</label>
+          <select id="c-tipo-asignacion" onchange="toggleAsignacionChofer()">
+            <option value="ninguna">Sin Asignación</option>
+            <option value="por_ruta">Asignar primero una Ruta</option>
+            <option value="por_guagua">Asignar primero una Guagua</option>
+          </select>
+        </div>
+        
+        <div id="asignacion-por-ruta" style="display: none;">
+          <div class="field"><label>Selecciona la Ruta</label><select id="c-select-ruta" onchange="cargarGuaguasDeRuta()"></select></div>
+          <div class="field"><label>Guaguas que cubren esa Ruta</label><select id="c-select-guagua-ruta"></select></div>
+        </div>
+
+        <div id="asignacion-por-guagua" style="display: none;">
+          <div class="field"><label>Selecciona la Guagua</label><select id="c-select-guagua" onchange="cargarRutasDeGuagua()"></select></div>
+          <div class="field"><label>Rutas que cubre esa Guagua</label><select id="c-select-ruta-guagua"></select></div>
+        </div>
+
+        <div class="field"><label>Estado del Chofer</label>
+          <select id="c-estado">
+            <option value="trabajando">Trabajando</option>
+            <option value="descanso">Descanso</option>
+            <option value="vacaciones">Vacaciones</option>
+            <option value="enfermo">Enfermo</option>
+            <option value="en_ruta">En Ruta (Auto)</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="document.getElementById('modal-chofer').classList.remove('open')">Cancelar</button>
+        <button class="btn-primary" onclick="guardarChofer()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Cliente -->
+  <div class="modal-overlay" id="modal-cliente">
+    <div class="modal">
+      <div class="modal-header"><h3 id="modal-cliente-titulo">Cliente PWA</h3><button class="btn-secondary" onclick="document.getElementById('modal-cliente').classList.remove('open')">✕</button></div>
+      <div class="modal-body">
+        <input type="hidden" id="cli-id" />
+        <div class="field"><label>Nombre Completo</label><input type="text" id="cli-nombre" /></div>
+        <div class="field"><label>Correo Electrónico</label><input type="email" id="cli-email" /></div>
+        <div class="field"><label>Contraseña</label><input type="text" id="cli-password" /></div>
+        <div class="field"><label>Gestor Asignado</label><select id="cli-gestor"></select></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="document.getElementById('modal-cliente').classList.remove('open')">Cancelar</button>
+        <button class="btn-primary" onclick="guardarCliente()">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  
+  <script>
+    // ==========================================
+    // VARIABLES GLOBALES Y ESTADO
+    // ==========================================
+    let GUAGUAS = [], RESERVAS = [], CREDENCIALES = [], USUARIOS = [], VALORACIONES = [];
+    let ORIGENES = [], DESTINOS = [], CHOFERES = [], NOTIFICACIONES = [];
+    let CURRENT_USER = null, PWA_CONFIG = {}, html5QrCode = null, reservaEscaneadaActual = null;
+    let audioCtx, audioInterval = null;
+    let fotoGuaguaBase64 = null, fotoChoferBase64 = null;
+
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => document.querySelectorAll(s);
+
+    // ==========================================
+    // SONIDO Y NOTIFICACIONES
+    // ==========================================
+    function iniciarAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    function reproducirSonido() {
+      if (!audioCtx) iniciarAudio();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.type = 'sine'; osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+    }
+    
+    function chequearNotificaciones() {
+      const noLeidas = NOTIFICACIONES.filter(n => !n.leida);
+      const badge = $('#notif-badge');
+      if (noLeidas.length > 0) {
+        badge.textContent = noLeidas.length;
+        badge.style.display = 'inline-block';
+        $('#toast-count').textContent = noLeidas.length;
+        $('#toast-banner').style.display = 'block';
+        
+        if (!audioInterval) {
+          reproducirSonido();
+          audioInterval = setInterval(reproducirSonido, 300000); // 5 minutos
+        }
+      } else {
+        badge.style.display = 'none';
+        $('#toast-banner').style.display = 'none';
+        if (audioInterval) { clearInterval(audioInterval); audioInterval = null; }
+      }
+    }
+
+    // ==========================================
+    // LOGIN Y NAVEGACIÓN
+    // ==========================================
+    $('#btn-login').addEventListener('click', async () => {
+      const user = $('#login-user').value;
+      const pass = $('#login-pass').value;
+      if (user === 'admin' && pass === 'admin123') {
+        CURRENT_USER = { usuario: 'admin', nombre: 'Administrador', rol: 'admin' };
+        iniciarPanel(); return;
+      }
+      try {
+        const res = await fetch('/api/credenciales');
+        CREDENCIALES = await res.json();
+        const encontrado = CREDENCIALES.find(c => c.usuario === user && c.password === pass);
+        if (encontrado) { CURRENT_USER = encontrado; iniciarPanel(); } 
+        else { alert('Credenciales incorrectas'); }
+      } catch (e) { alert('Error de conexión'); }
+    });
+
+    async function iniciarPanel() {
+      iniciarAudio();
+      $('#login-screen').classList.add('hidden'); 
+      $('#app').classList.add('visible');
+      await cargarTodo();
+      chequearNotificaciones();
+    }
+
+    $('#btn-logout').addEventListener('click', () => {
+      $('#app').classList.remove('visible'); $('#login-screen').classList.remove('hidden');
+      if (audioInterval) clearInterval(audioInterval);
+    });
+
+    $('#btn-menu').addEventListener('click', () => { $('#sidebar').classList.add('open'); $('#sidebar-overlay').classList.add('open'); });
+    $('#btn-close-sidebar').addEventListener('click', () => { $('#sidebar').classList.remove('open'); $('#sidebar-overlay').classList.remove('open'); });
+    $('#sidebar-overlay').addEventListener('click', () => { $('#sidebar').classList.remove('open'); $('#sidebar-overlay').classList.remove('open'); });
+
+    $$('.nav-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        $$('.nav-item').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        $$('.view').forEach(v => v.classList.remove('active'));
+        $(`#view-${btn.dataset.view}`).classList.add('active');
+        $('#topbar-title').textContent = btn.textContent.trim();
+        if (window.innerWidth < 768) { $('#sidebar').classList.remove('open'); $('#sidebar-overlay').classList.remove('open'); }
+      });
+    });
+
+    // ==========================================
+    // CARGA DE DATOS GLOBAL
+    // ==========================================
+    async function cargarTodo() {
+      try {
+        const [rG, rR, rC, rU, rV, rO, rD, rCh, rN, rP] = await Promise.all([
+          fetch('/api/guaguas'), fetch('/api/reservas'), fetch('/api/credenciales'), 
+          fetch('/api/usuarios'), fetch('/api/valoraciones'), fetch('/api/origenes'),
+          fetch('/api/destinos'), fetch('/api/choferes'), fetch('/api/notificaciones'),
+          fetch('/api/config')
+        ]);
+        GUAGUAS = await rG.json(); RESERVAS = await rR.json();
+        CREDENCIALES = await rC.json(); USUARIOS = await rU.json();
+        VALORACIONES = await rV.json(); ORIGENES = await rO.json();
+        DESTINOS = await rD.json(); CHOFERES = await rCh.json();
+        NOTIFICACIONES = await rN.json(); PWA_CONFIG = await rP.json();
+
+        renderDashboard();
+        renderRutas(); renderGuaguas(); renderChoferes(); renderReservas(); 
+        renderClientes(); renderCredenciales(); renderNotificaciones(); cargarConfigPWA();
+        chequearNotificaciones();
+      } catch (error) { console.error('Error cargando datos', error); }
+    }
+
+    function renderDashboard() {
+      const activas = GUAGUAS.filter(g => g.estado === 'funcionamiento').length;
+      const pendientes = RESERVAS.filter(r => r.estado === 'pendiente').length;
+      $('#stat-guaguas').textContent = activas;
+      $('#stat-reservas').textContent = pendientes;
+    }
+
+    // ==========================================
+    // RUTAS (ORÍGENES Y DESTINOS)
+    // ==========================================
+    function renderRutas() {
+      $('#lista-origenes').innerHTML = ORIGENES.map(o => `
+        <div style="display:flex; justify-content:space-between; padding:0.5rem; border-bottom:1px solid var(--border);">
+          ${o} <button class="btn-danger" style="padding:0.2rem 0.5rem; font-size:0.7rem;" onclick="eliminarOrigen('${o}')">🗑️</button>
+        </div>
+      `).join('');
+      $('#lista-destinos').innerHTML = DESTINOS.map(d => `
+        <div style="display:flex; justify-content:space-between; padding:0.5rem; border-bottom:1px solid var(--border);">
+          ${d} <button class="btn-danger" style="padding:0.2rem 0.5rem; font-size:0.7rem;" onclick="eliminarDestino('${d}')">🗑️</button>
+        </div>
+      `).join('');
+    }
+
+    window.agregarOrigen = async () => {
+      const val = $('#nuevo-origen-input').value.trim();
+      if (!val) return;
+      await fetch('/api/origenes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre: val }) });
+      $('#nuevo-origen-input').value = ''; cargarTodo();
+    };
+    window.agregarDestino = async () => {
+      const val = $('#nuevo-destino-input').value.trim();
+      if (!val) return;
+      await fetch('/api/destinos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre: val }) });
+      $('#nuevo-destino-input').value = ''; cargarTodo();
+    };
+
+    window.eliminarOrigen = async (nombre) => {
+      const guaguasAfectadas = GUAGUAS.filter(g => g.origen === nombre);
+      if (guaguasAfectadas.length === 0) {
+        if (confirm(`¿Eliminar el origen "${nombre}"?`)) {
+          await fetch(`/api/origenes/${nombre}`, { method: 'DELETE' });
+          cargarTodo();
+        }
+        return;
+      }
+      
+      const reservasAfectadas = RESERVAS.filter(r => {
+        const g = guaguasAfectadas.find(x => x.id === r.guaguaId);
+        return g && r.estado !== 'cancelada';
+      });
+
+      let msg = `El origen "${nombre}" está en uso por las guaguas: ${guaguasAfectadas.map(g => g.id).join(', ')}.`;
+      if (reservasAfectadas.length > 0) {
+        msg += `\n\n¡ALERTA! Hay ${reservasAfectadas.length} reservas activas para estas guaguas. Se cancelarán automáticamente.`;
+      }
+      msg += `\n\n¿Deseas eliminarlo de todos modos?`;
+
+      if (confirm(msg)) {
+        for (const r of reservasAfectadas) {
+          await fetch(`/api/reservas/${r.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado: 'cancelada_admin' }) });
+          await fetch('/api/notificaciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tipo: 'reserva_afectada', mensaje: `Reserva ${r.codigo} cancelada por eliminación del origen "${nombre}".`, cliente: r.nombre, email: r.email, codigoReserva: r.codigo }) });
+        }
+        await fetch(`/api/origenes/${nombre}`, { method: 'DELETE' });
+        for (const g of guaguasAfectadas) {
+          await fetch(`/api/guaguas/${g.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ origen: '' }) });
+          await fetch('/api/notificaciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tipo: 'alerta_critica', mensaje: `La guagua ${g.id} se quedó sin Origen porque se eliminó "${nombre}". Asigna uno nuevo.`, guaguaId: g.id, requiereAccion: true }) });
+        }
+        cargarTodo();
+      }
+    };
+
+    window.eliminarDestino = async (nombre) => {
+      const guaguasAfectadas = GUAGUAS.filter(g => g.destino === nombre);
+      if (guaguasAfectadas.length === 0) {
+        if (confirm(`¿Eliminar el destino "${nombre}"?`)) {
+          await fetch(`/api/destinos/${nombre}`, { method: 'DELETE' });
+          cargarTodo();
+        }
+        return;
+      }
+      const reservasAfectadas = RESERVAS.filter(r => {
+        const g = guaguasAfectadas.find(x => x.id === r.guaguaId);
+        return g && r.estado !== 'cancelada';
+      });
+      let msg = `El destino "${nombre}" está en uso por las guaguas: ${guaguasAfectadas.map(g => g.id).join(', ')}.`;
+      if (reservasAfectadas.length > 0) msg += `\n\n¡ALERTA! Hay ${reservasAfectadas.length} reservas activas. Se cancelarán automáticamente.`;
+      msg += `\n\n¿Deseas eliminarlo de todos modos?`;
+
+      if (confirm(msg)) {
+        for (const r of reservasAfectadas) {
+          await fetch(`/api/reservas/${r.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado: 'cancelada_admin' }) });
+          await fetch('/api/notificaciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tipo: 'reserva_afectada', mensaje: `Reserva ${r.codigo} cancelada por eliminación del destino "${nombre}".`, cliente: r.nombre, email: r.email, codigoReserva: r.codigo }) });
+        }
+        await fetch(`/api/destinos/${nombre}`, { method: 'DELETE' });
+        for (const g of guaguasAfectadas) {
+          await fetch(`/api/guaguas/${g.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ destino: '' }) });
+          await fetch('/api/notificaciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tipo: 'alerta_critica', mensaje: `La guagua ${g.id} se quedó sin Destino porque se eliminó "${nombre}". Asigna uno nuevo.`, guaguaId: g.id, requiereAccion: true }) });
+        }
+        cargarTodo();
+      }
+    };
+
+    // ==========================================
+    // FOTOS (COMPRESIÓN Y RECORTE)
+    // ==========================================
+    async function procesarImagen(file, maxW, maxH) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width, height = img.height;
+            if (width > maxW) { height = height * (maxW / width); width = maxW; }
+            if (height > maxH) { width = width * (maxH / height); height = maxH; }
+            canvas.width = width; canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.7));
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    window.procesarFotoGuagua = async (input) => {
+      if (!input.files[0]) return;
+      fotoGuaguaBase64 = await procesarImagen(input.files[0], 600, 400);
+      $('#g-foto-preview').src = fotoGuaguaBase64;
+      $('#g-foto-preview').style.display = 'block';
+    };
+
+    window.procesarFotoChofer = async (input) => {
+      if (!input.files[0]) return;
+      fotoChoferBase64 = await procesarImagen(input.files[0], 300, 300);
+      $('#c-foto-preview').src = fotoChoferBase64;
+    };
+
+    // (fin primera parte)
