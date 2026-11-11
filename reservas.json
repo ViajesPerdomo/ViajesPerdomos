@@ -77,21 +77,5 @@
     "moneda": "CUP",
     "estado": "pendiente",
     "createdAt": "2026-11-10T07:39:06.559Z"
-  },
-  {
-    "nombre": "Kendr Martinez",
-    "email": "lisvaniadelgado46@gmail.com",
-    "gestorCodigo": "Lisvania",
-    "ci": "03112074649",
-    "telefono": "53948837",
-    "guaguaId": "1",
-    "fechaViaje": "2026-11-11",
-    "cantidad": 1,
-    "id": "1794314720693",
-    "codigo": "VP-F02OZ3",
-    "total": 8500,
-    "moneda": "CUP",
-    "estado": "pendiente",
-    "createdAt": "2026-11-10T12:45:20.693Z"
   }
 ]
