@@ -7,14 +7,18 @@
     "destino": "Puerto Padre",
     "precio": 16000,
     "moneda": "CUP",
-    "duracion": "2 horas",
+    "duracion": 0,
     "salida": "15:00",
     "asientos": 40,
-    "asientosDisp": 38,
+    "asientosDisp": 40,
     "oferta": true,
     "activa": true,
     "imagen": "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&q=80",
-    "descripcion": "Guagua Yutong de larga distancia."
+    "descripcion": "Guagua Yutong de larga distancia.",
+    "placa": "1",
+    "estado": "funcionamiento",
+    "motivoTaller": "",
+    "fecha": "2026-11-12"
   },
   {
     "id": "2",
