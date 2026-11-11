@@ -16,7 +16,7 @@ const GITHUB_OWNER = process.env.GITHUB_OWNER;
 const GITHUB_REPO = process.env.GITHUB_REPO;
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 
-const cache = { guaguas: null, reservas: null, usuarios: null, credenciales: null, config: null };
+const cache = { guaguas: null, reservas: null, usuarios: null, credenciales: null, config: null, valoraciones: null };
 
 const githubApi = async (endpoint, options = {}) => {
   const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${endpoint}`;
@@ -82,7 +82,25 @@ async function inicializarDatos() {
     if (!await leerJSON('reservas')) await guardarJSON('reservas', []);
     if (!await leerJSON('usuarios')) await guardarJSON('usuarios', []);
     if (!await leerJSON('credenciales')) await guardarJSON('credenciales', []);
-    if (!await leerJSON('config')) await guardarJSON('config', { nombreApp: 'Viajes Perdomo', icono: '🚌', color: '#0f766e', imagenHero: '' });
+    if (!await leerJSON('valoraciones')) await guardarJSON('valoraciones', []);
+    
+    // NUEVO: Configuración ampliada con textos, FAQ y rutas
+    let configData = await leerJSON('config');
+    if (!configData) {
+      await guardarJSON('config', { 
+        nombreApp: 'Viajes Perdomo', 
+        icono: '🚌', 
+        color: '#0f766e', 
+        imagenHero: '',
+        heroTitulo: 'Viaja cómodo por Cuba',
+        heroSubtitulo: 'Guaguas Yutong con A/C y WiFi.',
+        faqs: [
+          { pregunta: '¿Cómo puedo pagar mi reserva?', respuesta: 'El pago se realiza directamente al abordar la guagua, en efectivo (CUP).' },
+          { pregunta: '¿Puedo cancelar mi reserva?', respuesta: 'Sí, desde la sección "Mis Reservas" puedes cancelar tu viaje.' }
+        ],
+        rutasDisponibles: ['La Habana', 'Varadero', 'Santiago de Cuba', 'Holguín', 'Trinidad']
+      });
+    }
     console.log("🎉 Inicialización completada.");
   } catch (error) {
     console.error("⚠️ Error crítico inicializando datos:", error.message);
@@ -109,7 +127,6 @@ app.post('/api/auth/register', async (req, res) => {
     const usuarios = data ? data.data : [];
     const sha = data ? data.sha : null;
     if (usuarios.find(u => u.email === email)) return res.status(400).json({ error: 'Correo registrado' });
-    
     const nuevoUsuario = { id: Date.now().toString(), nombre, email, password, gestorCodigo };
     usuarios.push(nuevoUsuario);
     await guardarJSON('usuarios', usuarios, sha);
@@ -155,7 +172,6 @@ app.put('/api/usuarios/:id', async (req, res) => {
     const sha = actual ? actual.sha : null;
     const index = lista.findIndex(u => u.id === req.params.id);
     if (index === -1) return res.status(404).json({ error: 'Usuario no encontrado' });
-    
     lista[index] = { ...lista[index], ...req.body };
     await guardarJSON('usuarios', lista, sha);
     res.json(lista[index]);
@@ -272,9 +288,7 @@ app.put('/api/reservas/:id', async (req, res) => {
     const estadoAnterior = reservas[index].estado;
     const estadoNuevo = req.body.estado;
 
-    // Lógica de devolución de asientos
     if (estadoNuevo === 'cancelada' && estadoAnterior !== 'cancelada') {
-      // Si se cancela, devolvemos asientos
       const guaguasData = await leerJSON('guaguas', true);
       if (guaguasData) {
         const guaguas = guaguasData.data;
@@ -285,7 +299,6 @@ app.put('/api/reservas/:id', async (req, res) => {
         }
       }
     } else if (estadoNuevo === 'pendiente' && (estadoAnterior === 'cancelada' || estadoAnterior === 'completada')) {
-      // Si se revierte a pendiente, restamos asientos de nuevo (porque ya se habían devuelto)
       const guaguasData = await leerJSON('guaguas', true);
       if (guaguasData) {
         const guaguas = guaguasData.data;
@@ -311,6 +324,28 @@ app.delete('/api/reservas/:id', async (req, res) => {
     await guardarJSON('reservas', reservas, reservasData.sha);
     res.json({ ok: true });
   } catch (error) { res.status(500).json({ error: 'Error al eliminar' }); }
+});
+
+// ==========================================
+// ENDPOINTS: VALORACIONES (NUEVO)
+// ==========================================
+app.get('/api/valoraciones', async (req, res) => {
+  try {
+    const data = await leerJSON('valoraciones');
+    res.json(data ? data.data : []);
+  } catch (error) { res.status(500).json({ error: 'Error al leer valoraciones' }); }
+});
+
+app.post('/api/valoraciones', async (req, res) => {
+  try {
+    const actual = await leerJSON('valoraciones', true);
+    const lista = actual ? actual.data : [];
+    const sha = actual ? actual.sha : null;
+    const nueva = { ...req.body, id: Date.now().toString(), fecha: new Date().toISOString() };
+    lista.push(nueva);
+    await guardarJSON('valoraciones', lista, sha);
+    res.status(201).json(nueva);
+  } catch (error) { res.status(500).json({ error: 'Error al guardar valoración' }); }
 });
 
 // ==========================================
