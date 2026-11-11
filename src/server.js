@@ -16,7 +16,7 @@ const GITHUB_OWNER = process.env.GITHUB_OWNER;
 const GITHUB_REPO = process.env.GITHUB_REPO;
 const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
 
-// Ampliación de la caché para incluir las nuevas entidades
+// Caché ampliada para incluir las nuevas entidades
 const cache = { 
   guaguas: null, 
   reservas: null, 
@@ -384,6 +384,50 @@ app.delete('/api/reservas/:id', async (req, res) => {
     await guardarJSON('reservas', reservas, reservasData.sha);
     res.json({ ok: true });
   } catch (error) { res.status(500).json({ error: 'Error al eliminar' }); }
+});
+
+// ==========================================
+// NUEVO ENDPOINT: ESTADÍSTICAS
+// ==========================================
+app.get('/api/estadisticas', async (req, res) => {
+  try {
+    const reservasData = await leerJSON('reservas');
+    const reservas = reservasData ? reservasData.data : [];
+
+    let totalVendidos = reservas.length;
+    let cancelados = 0;
+    let completados = 0;
+    let pendientes = 0;
+    let canceladosAdmin = 0;
+    let dineroCUP = 0;
+    let dineroMLC = 0;
+
+    reservas.forEach(r => {
+      if (r.estado === 'cancelada') cancelados++;
+      else if (r.estado === 'cancelada_admin') canceladosAdmin++;
+      else if (r.estado === 'completada') completados++;
+      else if (r.estado === 'pendiente' || r.estado === 'confirmada') pendientes++;
+
+      // Sumar dinero solo de reservas que no fueron canceladas (ni por cliente ni por admin)
+      if (r.estado !== 'cancelada' && r.estado !== 'cancelada_admin') {
+        if (r.moneda === 'CUP') dineroCUP += r.total;
+        if (r.moneda === 'MLC') dineroMLC += r.total;
+      }
+    });
+
+    res.json({
+      totalVendidos,
+      cancelados,
+      canceladosAdmin,
+      completados,
+      pendientes,
+      dineroCUP,
+      dineroMLC
+    });
+  } catch (error) {
+    console.error('Error calculando estadísticas:', error);
+    res.status(500).json({ error: 'Error al calcular estadísticas' });
+  }
 });
 
 // ==========================================
