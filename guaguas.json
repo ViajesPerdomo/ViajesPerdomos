@@ -7,10 +7,10 @@
     "destino": "Puerto Padre",
     "precio": 16000,
     "moneda": "CUP",
-    "duracion": 0,
+    "duracion": 8,
     "salida": "15:00",
-    "asientos": 40,
-    "asientosDisp": 40,
+    "asientos": 45,
+    "asientosDisp": 45,
     "oferta": true,
     "activa": true,
     "imagen": "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&q=80",
@@ -18,7 +18,7 @@
     "placa": "1",
     "estado": "funcionamiento",
     "motivoTaller": "",
-    "fecha": "2027-02-11"
+    "fecha": "2026-11-16"
   },
   {
     "id": "2",
