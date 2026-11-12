@@ -8,5 +8,16 @@
     "fecha": "2026-11-12T16:24:29.194Z",
     "leida": true,
     "informada": false
+  },
+  {
+    "tipo": "reserva_afectada",
+    "mensaje": "Reserva VP-TG7F83 cancelada por eliminación de la guagua 1.",
+    "cliente": "Kendry ",
+    "email": "dgrisel940@gmail.com",
+    "codigoReserva": "VP-TG7F83",
+    "id": "1794505701886",
+    "fecha": "2026-11-12T17:48:21.886Z",
+    "leida": false,
+    "informada": false
   }
 ]
