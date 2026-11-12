@@ -19,5 +19,16 @@
     "fecha": "2026-11-12T17:48:21.886Z",
     "leida": false,
     "informada": false
+  },
+  {
+    "tipo": "reserva_afectada",
+    "mensaje": "Reserva VP-P70TX2 cancelada por eliminación de la guagua 1.",
+    "cliente": "Kendry123",
+    "email": "dgrisel9@gmail.com",
+    "codigoReserva": "VP-P70TX2",
+    "id": "1794505707135",
+    "fecha": "2026-11-12T17:48:27.135Z",
+    "leida": false,
+    "informada": false
   }
 ]
