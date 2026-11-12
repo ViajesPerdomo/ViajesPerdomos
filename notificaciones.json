@@ -17,8 +17,8 @@
     "codigoReserva": "VP-TG7F83",
     "id": "1794505701886",
     "fecha": "2026-11-12T17:48:21.886Z",
-    "leida": false,
-    "informada": false
+    "leida": true,
+    "informada": true
   },
   {
     "tipo": "reserva_afectada",
