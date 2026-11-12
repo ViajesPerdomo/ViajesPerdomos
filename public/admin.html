@@ -768,7 +768,9 @@
 
     $('#btn-nueva-guagua').addEventListener('click', () => {
       $('#modal-titulo-guagua').textContent = 'Nueva Guagua';
-      $('#g-id').value = ''; $('#g-placa').value = ''; 
+      $('#g-id').value = ''; 
+      $('#g-placa').value = ''; 
+      $('#g-placa').disabled = false; // ✅ Asegurar que la placa sea editable
       $('#g-origen').innerHTML = '<option value="">-- Sin Origen --</option>' + ORIGENES.map(o => `<option>${o}</option>`).join('');
       $('#g-destino').innerHTML = '<option value="">-- Sin Destino --</option>' + DESTINOS.map(d => `<option>${d}</option>`).join('');
       $('#g-precio').value = 1000; $('#g-moneda').value = 'CUP';
@@ -788,8 +790,8 @@
       const g = GUAGUAS.find(x => x.id === id); if (!g) return;
       $('#modal-titulo-guagua').textContent = 'Editar Guagua';
       $('#g-id').value = g.id; 
-      $('#g-placa').value = g.id; 
-      $('#g-placa').disabled = true; // No permitir cambiar la placa (es el ID)
+      $('#g-placa').value = g.placa || g.id; 
+      $('#g-placa').disabled = false; // ✅ PERMITIR EDITAR LA PLACA
       
       $('#g-origen').innerHTML = '<option value="">-- Sin Origen --</option>' + ORIGENES.map(o => `<option ${g.origen === o ? 'selected' : ''}>${o}</option>`).join('');
       $('#g-destino').innerHTML = '<option value="">-- Sin Destino --</option>' + DESTINOS.map(d => `<option ${g.destino === d ? 'selected' : ''}>${d}</option>`).join('');
@@ -830,13 +832,12 @@
         const minutosFin = minutosSalida + (duracion * 60);
         
         const choque = GUAGUAS.find(g => {
-          if (g.id === idOriginal) return false; // No comparar consigo misma
-          if (g.id !== placa) return false; // Solo verificar si la placa coincide (misma guagua en otra programación)
+          if (g.id === idOriginal) return false; 
+          if (g.id !== placa) return false; 
           if (!g.salida || !g.duracion) return false;
           const [gh, gm] = g.salida.split(':').map(Number);
           const mSalidaG = gh * 60 + gm;
           const mFinG = mSalidaG + (g.duracion * 60);
-          // Si los rangos se cruzan
           return (minutosSalida < mFinG && minutosFin > mSalidaG);
         });
         
@@ -852,7 +853,6 @@
         const fechasTexto = $('#g-fechas-unicas').value.trim();
         if (fechasTexto) fechasAProgramar = fechasTexto.split(',').map(f => f.trim());
       } else {
-        // Generación de 3 meses
         const diasSeleccionados = Array.from($$('.dia-rec:checked')).map(c => Number(c.value));
         if (diasSeleccionados.length === 0) return alert('Selecciona al menos un día de la semana.');
         
@@ -878,12 +878,28 @@
         imagen: fotoGuaguaBase64
       };
 
-      // Guardar un registro por cada fecha
-      for (const f of fechasAProgramar) {
-        const data = { ...baseData, fecha: f, asientosDisp: baseData.asientos };
-        const method = idOriginal ? 'PUT' : 'POST';
-        const url = idOriginal ? `/api/guaguas/${idOriginal}` : '/api/guaguas';
-        await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+      // ✅ LÓGICA DE CAMBIO DE PLACA
+      if (idOriginal && idOriginal !== placa) {
+        const res = await fetch(`/api/guaguas/${idOriginal}/cambiar-placa`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nuevaPlaca: placa })
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          return alert('Error al cambiar la placa: ' + (err.error || 'Desconocido'));
+        }
+        for (const f of fechasAProgramar) {
+          const data = { ...baseData, fecha: f, asientosDisp: baseData.asientos };
+          await fetch(`/api/guaguas/${placa}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        }
+      } else {
+        for (const f of fechasAProgramar) {
+          const data = { ...baseData, fecha: f, asientosDisp: baseData.asientos };
+          const method = idOriginal ? 'PUT' : 'POST';
+          const url = idOriginal ? `/api/guaguas/${idOriginal}` : '/api/guaguas';
+          await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        }
       }
       
       $('#modal-guagua').classList.remove('open'); 
