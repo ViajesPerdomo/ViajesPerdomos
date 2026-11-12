@@ -346,4 +346,584 @@
   <div class="toast" id="toast"></div>
 
   <script>
-    // (fin primera parte)
+      // ==========================================
+    // VARIABLES GLOBALES Y ESTADO
+    // ==========================================
+    let GUAGUAS = [];
+    let USER = null;
+    let isRegisterMode = false;
+    let viajeSeleccionado = null;
+    let todasLasReservas = [];
+    let PWA_CONFIG = {};
+    let searchMode = 'especifica'; // 'especifica', 'rango', 'todas'
+
+    const $ = (s) => document.querySelector(s);
+
+    function mostrarToast(mensaje, tipo = 'success') {
+      const toast = $('#toast');
+      if (!toast) return;
+      toast.textContent = mensaje;
+      toast.style.background = tipo === 'success' ? 'var(--success)' : 'var(--danger)';
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // ==========================================
+    // CARGAR GESTORES Y CONFIGURACIÓN INICIAL
+    // ==========================================
+    async function cargarGestoresRegistro() {
+      try {
+        const res = await fetch('/api/gestores');
+        if (!res.ok) throw new Error();
+        const gestores = await res.json();
+        const select = $('#auth-gestor');
+        select.innerHTML = '<option value="">-- Seleccione un gestor --</option>';
+        if (gestores.length === 0) {
+          select.innerHTML += '<option value="" disabled>No hay gestores disponibles</option>';
+        } else {
+          gestores.forEach(g => select.innerHTML += `<option value="${g.usuario}">${g.nombre} (${g.usuario})</option>`);
+        }
+      } catch (error) {
+        $('#auth-gestor').innerHTML = '<option value="">Error al cargar gestores</option>';
+      }
+    }
+
+    async function cargarConfiguracionPWA() {
+      try {
+        const res = await fetch('/api/config');
+        if (!res.ok) return;
+        PWA_CONFIG = await res.json();
+
+        if (PWA_CONFIG.heroTitulo) $('#hero-titulo').textContent = PWA_CONFIG.heroTitulo;
+        if (PWA_CONFIG.heroSubtitulo) $('#hero-subtitulo').textContent = PWA_CONFIG.heroSubtitulo;
+        if (PWA_CONFIG.icono) document.querySelector('.splash-logo').textContent = PWA_CONFIG.icono;
+        if (PWA_CONFIG.nombreApp) document.title = PWA_CONFIG.nombreApp;
+
+        if (PWA_CONFIG.color) {
+          document.documentElement.style.setProperty('--primary', PWA_CONFIG.color);
+        }
+
+        if (PWA_CONFIG.faqs && PWA_CONFIG.faqs.length > 0) {
+          $('#faq-container').innerHTML = PWA_CONFIG.faqs.map(f => `
+            <div class="faq-item">
+              <h4>${f.pregunta}</h4>
+              <p>${f.respuesta}</p>
+            </div>
+          `).join('');
+        }
+      } catch (error) {
+        console.error('Error al cargar configuración:', error);
+      }
+    }
+
+    // ==========================================
+    // INICIALIZACIÓN Y SPLASH
+    // ==========================================
+    window.addEventListener('DOMContentLoaded', () => {
+      cargarGestoresRegistro();
+      setTimeout(() => {
+        const splash = $('#splash-screen');
+        if (splash) {
+          splash.classList.add('hidden');
+          setTimeout(() => splash.style.display = 'none', 500); 
+        }
+        try {
+          const savedUser = localStorage.getItem('vp_user');
+          if (savedUser) {
+            USER = JSON.parse(savedUser);
+            iniciarApp();
+          } else {
+            $('#login-screen').classList.add('active');
+          }
+        } catch (e) { $('#login-screen').classList.add('active'); }
+      }, 2000);
+    });
+
+    // ==========================================
+    // AUTENTICACIÓN
+    // ==========================================
+    $('#toggle-auth-mode').addEventListener('click', () => {
+      isRegisterMode = !isRegisterMode;
+      if (isRegisterMode) {
+        $('#auth-title').textContent = 'Crear Cuenta';
+        $('#group-nombre').style.display = 'block';
+        $('#group-gestor').style.display = 'block';
+        $('#btn-auth-submit').textContent = 'Registrarse';
+        $('#toggle-auth-mode').textContent = '¿Ya tienes cuenta? Inicia sesión';
+      } else {
+        $('#auth-title').textContent = 'Iniciar Sesión';
+        $('#group-nombre').style.display = 'none';
+        $('#group-gestor').style.display = 'none';
+        $('#btn-auth-submit').textContent = 'Entrar';
+        $('#toggle-auth-mode').textContent = '¿No tienes cuenta? Regístrate aquí';
+      }
+    });
+
+    $('#btn-auth-submit').addEventListener('click', async () => {
+      const nombre = $('#auth-nombre').value;
+      const email = $('#auth-email').value;
+      const password = $('#auth-password').value;
+      const gestorCodigo = $('#auth-gestor').value;
+
+      if (!email || !password) return mostrarToast('Completa todos los campos', 'error');
+      if (isRegisterMode) {
+        if (!nombre) return mostrarToast('El nombre es obligatorio', 'error');
+        if (!gestorCodigo) return mostrarToast('Debes seleccionar un gestor', 'error');
+      }
+
+      const endpoint = isRegisterMode ? '/api/auth/register' : '/api/auth/login';
+      const payload = isRegisterMode ? { nombre, email, password, gestorCodigo } : { email, password };
+
+      try {
+        const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        let data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Error');
+        USER = data.usuario;
+        localStorage.setItem('vp_user', JSON.stringify(USER));
+        mostrarToast(`Bienvenido, ${USER.nombre}`);
+        iniciarApp();
+      } catch (error) { mostrarToast(error.message, 'error'); }
+    });
+
+    $('#btn-logout-sidebar').addEventListener('click', () => {
+      localStorage.removeItem('vp_user');
+      USER = null;
+      $('#main-app').classList.remove('active');
+      $('#login-screen').classList.add('active');
+      $('#sidebar').classList.remove('open');
+      $('#sidebar-overlay').classList.remove('active');
+      mostrarToast('Sesión cerrada');
+    });
+
+    // ==========================================
+    // NAVEGACIÓN Y MENÚ
+    // ==========================================
+    $('#btn-menu').addEventListener('click', () => {
+      $('#sidebar').classList.add('open');
+      $('#sidebar-overlay').classList.add('active');
+    });
+    $('#sidebar-overlay').addEventListener('click', () => {
+      $('#sidebar').classList.remove('open');
+      $('#sidebar-overlay').classList.remove('active');
+    });
+
+    document.querySelectorAll('.sidebar-menu li[data-target]').forEach(item => {
+      item.addEventListener('click', () => {
+        document.querySelectorAll('.sidebar-menu li').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        const targetId = item.dataset.target;
+        $('#' + targetId).classList.add('active');
+        $('#header-title').textContent = item.textContent.replace(/[^\w\sáéíóúÁÉÍÓÚñÑ]/gi, '').trim();
+        if (window.innerWidth < 768) {
+          $('#sidebar').classList.remove('open');
+          $('#sidebar-overlay').classList.remove('active');
+        }
+        if (targetId === 'view-reservas') cargarMisReservas();
+        if (targetId === 'view-perfil') {
+          $('#perfil-nombre').value = USER.nombre;
+          $('#perfil-email').value = USER.email;
+        }
+      });
+    });
+
+    // ==========================================
+    // INICIO DE LA APP Y CARGA DE GUAGUAS
+    // ==========================================
+    async function iniciarApp() {
+      $('#login-screen').classList.remove('active');
+      $('#main-app').classList.add('active');
+      $('#user-display').textContent = `Hola, ${USER.nombre}`;
+      
+      await cargarConfiguracionPWA();
+      await cargarGuaguas();
+    }
+
+    async function cargarGuaguas() {
+      try {
+        const res = await fetch('/api/guaguas');
+        if (!res.ok) throw new Error('Error del servidor');
+        const data = await res.json();
+        // Solo mostramos guaguas que estén en funcionamiento
+        GUAGUAS = data.filter(g => g.estado === 'funcionamiento');
+        
+        inicializarSelectores();
+        renderGuaguas();
+      } catch (error) {
+        $('#trips-grid').innerHTML = '<p style="grid-column:1/-1; text-align:center; color:red;">Error al cargar las guaguas.</p>';
+      }
+    }
+
+    // ==========================================
+    // LÓGICA DEL BUSCADOR DINÁMICO
+    // ==========================================
+    function inicializarSelectores() {
+      // Llenar Orígenes únicos disponibles
+      const origenesUnicos = [...new Set(GUAGUAS.map(g => g.origen))].filter(o => o).sort();
+      $('#origen').innerHTML = '<option value="">Cualquiera</option>' + origenesUnicos.map(o => `<option>${o}</option>`).join('');
+      
+      // Llenar Destinos únicos disponibles
+      const destinosUnicos = [...new Set(GUAGUAS.map(g => g.destino))].filter(d => d).sort();
+      $('#destino').innerHTML = '<option value="">Cualquiera</option>' + destinosUnicos.map(d => `<option>${d}</option>`).join('');
+
+      // Llenar Fechas únicas disponibles
+      actualizarFechasDisponibles();
+    }
+
+    function actualizarDestinos() {
+      const origenSeleccionado = $('#origen').value;
+      let guaguasFiltradas = GUAGUAS;
+      
+      if (origenSeleccionado) {
+        guaguasFiltradas = guaguasFiltradas.filter(g => g.origen === origenSeleccionado);
+      }
+      
+      const destinosUnicos = [...new Set(guaguasFiltradas.map(g => g.destino))].filter(d => d).sort();
+      const destinoActual = $('#destino').value;
+      
+      $('#destino').innerHTML = '<option value="">Cualquiera</option>' + destinosUnicos.map(d => `<option ${destinoActual === d ? 'selected' : ''}>${d}</option>`).join('');
+      
+      // Si el destino actual ya no es válido, lo limpiamos
+      if (destinoActual && !destinosUnicos.includes(destinoActual)) {
+        $('#destino').value = '';
+      }
+    }
+
+    function actualizarOrigenes() {
+      const destinoSeleccionado = $('#destino').value;
+      let guaguasFiltradas = GUAGUAS;
+      
+      if (destinoSeleccionado) {
+        guaguasFiltradas = guaguasFiltradas.filter(g => g.destino === destinoSeleccionado);
+      }
+      
+      const origenesUnicos = [...new Set(guaguasFiltradas.map(g => g.origen))].filter(o => o).sort();
+      const origenActual = $('#origen').value;
+      
+      $('#origen').innerHTML = '<option value="">Cualquiera</option>' + origenesUnicos.map(o => `<option ${origenActual === o ? 'selected' : ''}>${o}</option>`).join('');
+      
+      if (origenActual && !origenesUnicos.includes(origenActual)) {
+        $('#origen').value = '';
+      }
+    }
+
+    function actualizarFechasDisponibles() {
+      const origen = $('#origen').value;
+      const destino = $('#destino').value;
+      
+      let filtradas = GUAGUAS;
+      if (origen) filtradas = filtradas.filter(g => g.origen === origen);
+      if (destino) filtradas = filtradas.filter(g => g.destino === destino);
+      
+      const fechasUnicas = [...new Set(filtradas.map(g => g.fecha))].filter(f => f).sort();
+      
+      $('#fecha-unica').innerHTML = '<option value="">Cualquiera</option>' + fechasUnicas.map(f => `<option>${f}</option>`).join('');
+    }
+
+    // Eventos de cambio en los selectores
+    $('#origen').addEventListener('change', () => {
+      actualizarDestinos();
+      actualizarFechasDisponibles();
+    });
+    $('#destino').addEventListener('change', () => {
+      actualizarOrigenes();
+      actualizarFechasDisponibles();
+    });
+
+    // ==========================================
+    // MODOS DE BÚSQUEDA (Pestañas)
+    // ==========================================
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        searchMode = btn.dataset.mode;
+        
+        if (searchMode === 'especifica') {
+          $('#field-fecha-unica').style.display = 'flex';
+          $('#field-fecha-desde').style.display = 'none';
+          $('#field-fecha-hasta').style.display = 'none';
+          $('#search-fields').classList.remove('range-mode');
+        } else if (searchMode === 'rango') {
+          $('#field-fecha-unica').style.display = 'none';
+          $('#field-fecha-desde').style.display = 'flex';
+          $('#field-fecha-hasta').style.display = 'flex';
+          $('#search-fields').classList.add('range-mode');
+        } else {
+          // Ver Todas
+          $('#field-fecha-unica').style.display = 'none';
+          $('#field-fecha-desde').style.display = 'none';
+          $('#field-fecha-hasta').style.display = 'none';
+          $('#search-fields').classList.remove('range-mode');
+        }
+      });
+    });
+
+    // ==========================================
+    // RENDERIZADO DE GUAGUAS
+    // ==========================================
+    function renderGuaguas() {
+      const grid = $('#trips-grid');
+      const origen = $('#origen').value;
+      const destino = $('#destino').value;
+      const fechaUnica = $('#fecha-unica').value;
+      const fechaDesde = $('#fecha-desde').value;
+      const fechaHasta = $('#fecha-hasta').value;
+      
+      const filtroChip = document.querySelector('.chip.active').dataset.filter;
+
+      let lista = GUAGUAS;
+
+      // Filtros por selectores
+      if (origen) lista = lista.filter(v => v.origen === origen);
+      if (destino) lista = lista.filter(v => v.destino === destino);
+      
+      // Filtro por modo de búsqueda
+      if (searchMode === 'especifica' && fechaUnica) {
+        lista = lista.filter(v => v.fecha === fechaUnica);
+      } else if (searchMode === 'rango') {
+        if (fechaDesde) lista = lista.filter(v => v.fecha >= fechaDesde);
+        if (fechaHasta) lista = lista.filter(v => v.fecha <= fechaHasta);
+      }
+
+      // Filtro por chips de tiempo
+      const hoy = new Date().toISOString().split('T')[0];
+      const manana = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+      const enUnaSemana = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
+
+      if (filtroChip === 'hoy') lista = lista.filter(v => v.fecha === hoy);
+      if (filtroChip === 'manana') lista = lista.filter(v => v.fecha === manana);
+      if (filtroChip === 'semana') lista = lista.filter(v => v.fecha >= hoy && v.fecha <= enUnaSemana);
+
+      // Ordenar por fecha y hora
+      lista.sort((a, b) => {
+        if (a.fecha !== b.fecha) return a.fecha.localeCompare(b.fecha);
+        return a.salida.localeCompare(b.salida);
+      });
+
+      if (lista.length === 0) {
+        grid.innerHTML = `<p style="grid-column:1/-1; text-align:center; padding:2rem;">No hay viajes disponibles con estos filtros.</p>`;
+        return;
+      }
+
+      grid.innerHTML = lista.map(v => {
+        const imagenFondo = v.imagen ? `background-image:url('${v.imagen}')` : 'background: linear-gradient(135deg, #0f766e, #115e59)';
+        
+        return `
+        <article class="trip-card">
+          <div class="trip-img" style="${imagenFondo}">
+            <span class="trip-price">${v.precio} ${v.moneda}</span>
+            <span class="badge-guagua">🚌 ${v.placa || v.id}</span>
+          </div>
+          <div class="trip-body">
+            <div class="trip-route">${v.origen} → ${v.destino}</div>
+            <div class="trip-meta">
+              <span>📅 ${v.fecha}</span>
+              <span>🕐 ${v.salida}</span>
+              <span>🪑 ${v.asientosDisp} disp.</span>
+            </div>
+            <div class="trip-actions">
+              <button class="btn-reserve" onclick="abrirModal('${v.id}')" ${v.asientosDisp <= 0 ? 'disabled style="background:#ccc"' : ''}>
+                ${v.asientosDisp > 0 ? 'Reservar' : 'Agotado'}
+              </button>
+            </div>
+          </div>
+        </article>
+      `}).join('');
+    }
+
+    $('#btn-buscar').addEventListener('click', renderGuaguas);
+
+    $('#filtros').addEventListener('click', (e) => {
+      if (!e.target.classList.contains('chip')) return;
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      e.target.classList.add('active');
+      renderGuaguas();
+    });
+
+    // ==========================================
+    // MODAL DE RESERVA
+    // ==========================================
+    window.abrirModal = (id) => {
+      viajeSeleccionado = GUAGUAS.find(v => v.id === id);
+      if(!viajeSeleccionado) return;
+      
+      $('#modal-titulo').textContent = `${viajeSeleccionado.origen} → ${viajeSeleccionado.destino}`;
+      $('#modal-summary').innerHTML = `
+        <p><strong>🚌 Placa:</strong> ${viajeSeleccionado.placa || viajeSeleccionado.id}</p>
+        <p><strong>📅 Fecha:</strong> ${viajeSeleccionado.fecha}</p>
+        <p><strong>🕐 Salida:</strong> ${viajeSeleccionado.salida}</p>
+        <p><strong>💵 Precio:</strong> ${viajeSeleccionado.precio} ${viajeSeleccionado.moneda} c/u</p>
+      `;
+      $('#res-fecha').value = viajeSeleccionado.fecha;
+      $('#res-cantidad').max = viajeSeleccionado.asientosDisp;
+      $('#res-cantidad').value = 1;
+      $('#modal').classList.add('open');
+    };
+
+    $('#modal-close').addEventListener('click', () => $('#modal').classList.remove('open'));
+
+    $('#btn-confirmar').addEventListener('click', async () => {
+      const ci = $('#res-ci').value;
+      const telefono = $('#res-telefono').value;
+      const fechaViaje = $('#res-fecha').value;
+      const cantidad = parseInt($('#res-cantidad').value);
+      
+      if (!ci || !telefono) return mostrarToast('Completa tus datos personales', 'error');
+      
+      try {
+        const res = await fetch('/api/reservas', {
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            nombre: USER.nombre, 
+            email: USER.email, 
+            gestorCodigo: USER.gestorCodigo, 
+            ci, telefono, 
+            guaguaId: viajeSeleccionado.id, 
+            fechaViaje, 
+            cantidad 
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        mostrarToast(`¡Reserva exitosa! Código: ${data.codigo}`);
+        $('#modal').classList.remove('open');
+        cargarGuaguas(); 
+      } catch (error) { mostrarToast(error.message, 'error'); }
+    });
+
+    // ==========================================
+    // MIS RESERVAS
+    // ==========================================
+    async function cargarMisReservas() {
+      const contenedor = $('#lista-reservas');
+      contenedor.innerHTML = '<p>Cargando reservas...</p>';
+      try {
+        const res = await fetch('/api/reservas');
+        if (!res.ok) throw new Error();
+        todasLasReservas = await res.json();
+        const misReservas = todasLasReservas.filter(r => r.email === USER.email);
+
+        if (misReservas.length === 0) {
+          contenedor.innerHTML = '<div class="card"><p>No tienes reservas realizadas aún.</p></div>';
+          return;
+        }
+
+        contenedor.innerHTML = misReservas.map(r => {
+          const guagua = GUAGUAS.find(g => g.id === r.guaguaId);
+          const rutaTexto = guagua ? `${guagua.origen} → ${guagua.destino}` : 'Ruta no disponible';
+          const placaTexto = guagua ? (guagua.placa || guagua.id) : r.guaguaId;
+
+          return `
+          <div class="reserva-card">
+            <div class="reserva-header">
+              <span>Código: ${r.codigo}</span>
+              <span class="badge-status status-${r.estado}">${r.estado}</span>
+            </div>
+            <div class="reserva-body">
+              <p><strong>Ruta:</strong> ${rutaTexto}</p>
+              <p><strong>Guagua (Placa):</strong> ${placaTexto}</p>
+              <p><strong>Fecha de viaje:</strong> ${r.fechaViaje}</p>
+              <p><strong>Pasajeros:</strong> ${r.cantidad}</p>
+              <p><strong>Total:</strong> ${r.total} ${r.moneda}</p>
+              <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                ${r.estado !== 'cancelada' && r.estado !== 'completada' && r.estado !== 'cancelada_admin' ? 
+                  `<button class="btn-cancelar" onclick="cancelarReserva('${r.id}')" style="flex:1;">Cancelar</button>` : 
+                  ''}
+                ${r.estado !== 'cancelada' && r.estado !== 'cancelada_admin' ? 
+                  `<button class="btn-main" style="flex:1; margin-top:0; padding:0.4rem; font-size:0.8rem;" onclick="mostrarQR('${r.codigo}')">📱 Mostrar QR</button>` : 
+                  ''}
+              </div>
+            </div>
+          </div>
+        `}).join('');
+      } catch (error) {
+        contenedor.innerHTML = '<p>Error al cargar las reservas.</p>';
+      }
+    }
+
+    window.mostrarQR = (codigo) => {
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(codigo)}`;
+      $('#qr-image').src = qrUrl;
+      $('#qr-text-codigo').textContent = `Código: ${codigo}`;
+      $('#modal-qr').classList.add('open');
+    };
+
+    $('#modal-qr-close').addEventListener('click', () => $('#modal-qr').classList.remove('open'));
+
+    window.cancelarReserva = async (id) => {
+      if (!confirm('¿Estás seguro de que deseas cancelar esta reserva?')) return;
+      try {
+        const res = await fetch(`/api/reservas/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ estado: 'cancelada' }) });
+        if (!res.ok) throw new Error();
+        mostrarToast('Reserva cancelada');
+        cargarMisReservas();
+        cargarGuaguas();
+      } catch (error) { mostrarToast('No se pudo cancelar', 'error'); }
+    };
+
+    // ==========================================
+    // PERFIL DE USUARIO
+    // ==========================================
+    $('#btn-guardar-perfil').addEventListener('click', async () => {
+      const nuevoNombre = $('#perfil-nombre').value;
+      const nuevaPass = $('#perfil-password').value;
+      
+      if (!nuevoNombre) return mostrarToast('El nombre no puede estar vacío', 'error');
+      
+      const datosActualizar = { nombre: nuevoNombre };
+      if (nuevaPass) datosActualizar.password = nuevaPass;
+
+      try {
+        const res = await fetch(`/api/usuarios/${USER.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(datosActualizar)
+        });
+        if (!res.ok) throw new Error('Error al guardar');
+        
+        const data = await res.json();
+        USER = data;
+        localStorage.setItem('vp_user', JSON.stringify(USER));
+        $('#user-display').textContent = `Hola, ${USER.nombre}`;
+        $('#perfil-password').value = '';
+        mostrarToast('Perfil actualizado correctamente');
+      } catch (error) {
+        mostrarToast('No se pudo guardar el perfil', 'error');
+      }
+    });
+
+    // ==========================================
+    // VALORACIONES
+    // ==========================================
+    $('#btn-enviar-valoracion').addEventListener('click', async () => {
+      const calificacion = $('#val-calificacion').value;
+      const comentario = $('#val-comentario').value;
+
+      if (!comentario.trim()) return mostrarToast('Por favor, escribe un comentario', 'error');
+
+      try {
+        const res = await fetch('/api/valoraciones', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nombreCliente: USER.nombre,
+            email: USER.email,
+            calificacion: parseInt(calificacion),
+            comentario: comentario
+          })
+        });
+
+        if (!res.ok) throw new Error('Error al enviar');
+        
+        mostrarToast('¡Gracias por tu valoración!');
+        $('#val-comentario').value = '';
+      } catch (error) {
+        mostrarToast('No se pudo enviar la valoración', 'error');
+      }
+    });
+
+  </script>
+</body>
+</html>
