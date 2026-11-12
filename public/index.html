@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f766e" />
+  <title>Viajes Perdomo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #0f766e; --primary-dark: #115e59; --accent: #f59e0b;
+      --bg: #f8fafc; --card: #ffffff; --text: #0f172a; --muted: #64748b;
+      --border: #e2e8f0; --success: #16a34a; --danger: #dc2626; --radius: 14px;
+    }
+    body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
+
+    /* --- SPLASH & LOGIN --- */
+    #splash-screen { position: fixed; inset: 0; background: var(--primary-dark); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; transition: opacity 0.5s ease; }
+    #splash-screen.hidden { opacity: 0; pointer-events: none; }
+    .splash-logo { font-size: 4rem; animation: bounce 1s infinite alternate; margin-bottom: 1rem; }
+    .splash-title { font-size: 1.8rem; font-weight: 800; letter-spacing: 1px; }
+    @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-15px); } }
+
+    #login-screen { position: fixed; inset: 0; background: var(--bg); z-index: 9000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; }
+    #login-screen.active { display: flex; }
+    .login-card { background: white; border-radius: var(--radius); padding: 2rem; width: 100%; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+    .login-card h2 { text-align: center; color: var(--primary); margin-bottom: 1.5rem; }
+    .input-group { margin-bottom: 1rem; }
+    .input-group label { display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.3rem; color: var(--muted); }
+    .input-group input, .input-group textarea, .input-group select { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 1rem; font-family: inherit; }
+    .btn-main { width: 100%; background: var(--primary); color: white; border: none; padding: 0.8rem; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 0.5rem; }
+    .btn-google { width: 100%; background: white; color: #333; border: 1px solid #ccc; padding: 0.8rem; border-radius: 8px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+    .toggle-auth { text-align: center; margin-top: 1rem; font-size: 0.9rem; color: var(--primary); cursor: pointer; text-decoration: underline; }
+
+    /* --- APP LAYOUT --- */
+    #main-app { display: none; flex: 1; flex-direction: row; position: relative; }
+    #main-app.active { display: flex; }
+
+    #sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 260px; background: var(--primary-dark); color: white; z-index: 5000; display: flex; flex-direction: column; transition: transform 0.3s ease; transform: translateX(-100%); box-shadow: 2px 0 10px rgba(0,0,0,0.2); }
+    #sidebar.open { transform: translateX(0); }
+    .sidebar-header { padding: 1.5rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 0.5rem; }
+    .sidebar-header h2 { font-size: 1.2rem; }
+    .sidebar-menu { list-style: none; padding: 1rem 0; flex: 1; overflow-y: auto; }
+    .sidebar-menu li { padding: 1rem 1.5rem; cursor: pointer; display: flex; align-items: center; gap: 0.8rem; transition: background 0.2s; font-weight: 500; }
+    .sidebar-menu li:hover { background: rgba(255,255,255,0.1); }
+    .sidebar-menu li.active { background: rgba(255,255,255,0.2); border-left: 4px solid var(--accent); }
+    
+    #sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 4000; display: none; }
+    #sidebar-overlay.active { display: block; }
+
+    #content-wrapper { flex: 1; display: flex; flex-direction: column; width: 100%; transition: margin-left 0.3s ease; }
+    header { background: var(--primary); color: white; padding: 0.85rem 1rem; display: flex; justify-content: space-between; align-items: center; }
+    .header-left { display: flex; align-items: center; gap: 1rem; }
+    .menu-btn { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; display: flex; align-items: center; }
+    .logo { font-size: 1.25rem; font-weight: 800; }
+    .user-info { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+
+    .view { display: none; padding: 1rem; max-width: 1200px; margin: 0 auto; width: 100%; flex: 1; animation: fadeIn 0.3s; }
+    .view.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* --- HOME & BUSCADOR --- */
+    .hero { background: var(--primary-dark); color: white; padding: 2rem 1rem 3.5rem; text-align: center; border-radius: var(--radius); margin-bottom: 2rem; }
+    .hero h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    
+    .search-box { background: white; border-radius: var(--radius); padding: 0.9rem; max-width: 900px; margin: -3rem auto 1.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.1); position: relative; z-index: 10; }
+    
+    .search-modes { display: flex; gap: 0.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; overflow-x: auto; }
+    .mode-btn { background: none; border: none; padding: 0.4rem 0.8rem; font-weight: bold; cursor: pointer; color: var(--muted); white-space: nowrap; border-radius: 6px; }
+    .mode-btn.active { background: var(--primary); color: white; }
+    
+    .search-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+    .search-fields.range-mode { grid-template-columns: 1fr 1fr; }
+    .field { display: flex; flex-direction: column; }
+    .field input, .field select { padding: 0.55rem; border: 1px solid var(--border); border-radius: 8px; width: 100%; }
+    .search-box button { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 0.65rem; font-weight: 700; cursor: pointer; width: 100%; margin-top: 0.5rem; }
+
+    .filters { display: flex; gap: 0.4rem; overflow-x: auto; margin-bottom: 1rem; }
+    .chip { background: white; border: 1px solid var(--border); border-radius: 999px; padding: 0.35rem 0.8rem; cursor: pointer; white-space: nowrap; }
+    .chip.active { background: var(--primary); color: white; }
+
+    .trips-grid { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+    .trip-card { background: white; border-radius: var(--radius); overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+    .trip-img { height: 140px; background-size: cover; background-position: center; position: relative; padding: 0.6rem; display: flex; justify-content: space-between; align-items: flex-start; }
+    .trip-price { background: var(--accent); color: white; font-weight: 800; padding: 0.3rem 0.7rem; border-radius: 999px; }
+    .badge-guagua { position: absolute; bottom: 0.6rem; left: 0.6rem; background: rgba(0,0,0,0.7); color: white; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.7rem; }
+    .trip-body { padding: 0.85rem; }
+    .trip-route { font-size: 1.1rem; font-weight: 800; margin-bottom: 0.5rem; }
+    .trip-meta { display: flex; gap: 0.35rem; font-size: 0.75rem; color: var(--muted); margin-bottom: 0.5rem; flex-wrap: wrap; }
+    .trip-meta span { background: var(--bg); padding: 0.2rem 0.5rem; border-radius: 6px; }
+    .trip-actions { display: flex; gap: 0.5rem; margin-top: 0.6rem; }
+    .btn-reserve { flex: 1; background: var(--primary); color: white; border: none; border-radius: 8px; padding: 0.7rem; font-weight: 700; cursor: pointer; }
+
+    /* --- RESERVAS --- */
+    .reserva-card { background: white; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 4px solid var(--accent); }
+    .reserva-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-weight: bold; }
+    .badge-status { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; color: white; text-transform: capitalize; }
+    .status-pendiente { background: var(--accent); }
+    .status-cancelada { background: var(--danger); }
+    .status-confirmada { background: var(--success); }
+    .status-completada { background: #3b82f6; }
+    .status-cancelada_admin { background: #fca5a5; color: #7f1d1d; }
+    .reserva-body p { font-size: 0.9rem; color: var(--muted); margin-bottom: 0.3rem; }
+    .btn-cancelar { background: transparent; color: var(--danger); border: 1px solid var(--danger); padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; margin-top: 0.5rem; font-size: 0.8rem;}
+
+    /* --- UTILIDADES --- */
+    .card { background: white; padding: 1.5rem; border-radius: var(--radius); box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 1rem; }
+    .faq-item { margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+    .faq-item h4 { color: var(--primary); margin-bottom: 0.3rem; }
+    .faq-item p { font-size: 0.9rem; color: var(--muted); }
+    
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 8000; padding: 1rem; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: white; width: 100%; max-width: 500px; border-radius: var(--radius); overflow-y: auto; max-height: 90vh; }
+    .modal-header { padding: 1rem; background: var(--primary); color: white; display: flex; justify-content: space-between; }
+    .modal-body { padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+    .btn-confirm { background: var(--success); color: white; border: none; padding: 1rem; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .toast { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--success); color: white; padding: 0.8rem 1.5rem; border-radius: 8px; font-weight: 700; opacity: 0; transition: 0.3s; z-index: 10000; }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .qr-modal-img { display: block; margin: 0 auto; width: 250px; height: 250px; }
+
+    @media (min-width: 768px) {
+      #sidebar { transform: translateX(0); }
+      #content-wrapper { margin-left: 260px; }
+      .menu-btn { display: none; }
+      #sidebar-overlay { display: none !important; }
+      .search-fields { grid-template-columns: repeat(4, 1fr); }
+      .search-fields.range-mode { grid-template-columns: repeat(5, 1fr); }
+      .trips-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (min-width: 1024px) {
+      .trips-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="splash-screen">
+    <div class="splash-logo">🚌</div>
+    <div class="splash-title">Viajes Perdomo</div>
+  </div>
+
+  <div id="login-screen">
+    <div class="login-card">
+      <h2 id="auth-title">Iniciar Sesión</h2>
+      <div class="input-group" id="group-nombre" style="display:none;">
+        <label>Nombre completo</label>
+        <input type="text" id="auth-nombre" placeholder="Tu nombre" />
+      </div>
+      <div class="input-group">
+        <label>Correo electrónico</label>
+        <input type="email" id="auth-email" placeholder="correo@ejemplo.com" />
+      </div>
+      <div class="input-group">
+        <label>Contraseña</label>
+        <input type="password" id="auth-password" placeholder="••••••••" />
+      </div>
+      <div class="input-group" id="group-gestor" style="display:none;">
+        <label>Gestor que te atendió (Obligatorio) *</label>
+        <select id="auth-gestor" required style="border-color: var(--accent);">
+          <option value="">-- Seleccione un gestor --</option>
+        </select>
+      </div>
+      <button class="btn-main" id="btn-auth-submit">Entrar</button>
+      <div style="text-align: center; margin: 1rem 0; color: var(--muted);">o</div>
+      <button class="btn-google" id="btn-google">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="G" width="20" /> Acceder con Gmail
+      </button>
+      <div class="toggle-auth" id="toggle-auth-mode">¿No tienes cuenta? Regístrate aquí</div>
+    </div>
+  </div>
+
+  <div id="main-app">
+    <div id="sidebar-overlay"></div>
+
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <span style="font-size: 2rem;">🚌</span>
+        <h2>Viajes Perdomo</h2>
+      </div>
+      <ul class="sidebar-menu">
+        <li class="active" data-target="view-home">🏠 Inicio</li>
+        <li data-target="view-perfil">👤 Mi Perfil</li>
+        <li data-target="view-reservas">🎫 Mis Reservas</li>
+        <li data-target="view-faq">❓ Preguntas Frecuentes</li>
+        <li data-target="view-valoracion">⭐ Valorar Agencia</li>
+        <li data-target="view-acerca">ℹ️ Acerca de Nosotros</li>
+        <li id="btn-logout-sidebar" style="color: #fca5a5; margin-top: auto;">🚪 Cerrar Sesión</li>
+      </ul>
+    </aside>
+
+    <div id="content-wrapper">
+      <header>
+        <div class="header-left">
+          <button class="menu-btn" id="btn-menu">☰</button>
+          <div class="logo" id="header-title">Inicio</div>
+        </div>
+        <div class="user-info">
+          <span id="user-display">Hola</span>
+        </div>
+      </header>
+
+      <section id="view-home" class="view active">
+        <div class="hero">
+          <h1 id="hero-titulo">Viaja cómodo por Cuba</h1>
+          <p id="hero-subtitulo">Guaguas Yutong con A/C y WiFi.</p>
+        </div>
+
+        <div class="search-box">
+          <!-- Selector de Modos -->
+          <div class="search-modes" id="search-modes">
+            <button class="mode-btn active" data-mode="especifica">Ruta Específica</button>
+            <button class="mode-btn" data-mode="rango">Rango de Fechas</button>
+            <button class="mode-btn" data-mode="todas">Ver Todas</button>
+          </div>
+
+          <div class="search-fields" id="search-fields">
+            <div class="field">
+              <label>Origen</label>
+              <select id="origen"><option value="">Cualquiera</option></select>
+            </div>
+            <div class="field">
+              <label>Destino</label>
+              <select id="destino"><option value="">Cualquiera</option></select>
+            </div>
+            <div class="field" id="field-fecha-unica">
+              <label>Fecha</label>
+              <select id="fecha-unica"><option value="">Cualquiera</option></select>
+            </div>
+            <div class="field" id="field-fecha-desde" style="display:none;">
+              <label>Desde</label>
+              <input type="date" id="fecha-desde" />
+            </div>
+            <div class="field" id="field-fecha-hasta" style="display:none;">
+              <label>Hasta</label>
+              <input type="date" id="fecha-hasta" />
+            </div>
+            <div class="field" id="field-personas">
+              <label>Personas</label>
+              <input type="number" id="personas" min="1" max="10" value="1" />
+            </div>
+          </div>
+          <button id="btn-buscar">🔍 Buscar</button>
+        </div>
+
+        <div class="filters" id="filtros">
+          <button class="chip active" data-filter="all">Todas</button>
+          <button class="chip" data-filter="hoy">Hoy</button>
+          <button class="chip" data-filter="manana">Mañana</button>
+          <button class="chip" data-filter="semana">Esta Semana</button>
+        </div>
+        <div class="trips-grid" id="trips-grid"></div>
+      </section>
+
+      <section id="view-perfil" class="view">
+        <div class="card">
+          <h2 style="color: var(--primary); margin-bottom: 1rem;">Editar mis datos</h2>
+          <div class="input-group">
+            <label>Nombre completo</label>
+            <input type="text" id="perfil-nombre" />
+          </div>
+          <div class="input-group">
+            <label>Correo electrónico (No editable)</label>
+            <input type="email" id="perfil-email" disabled style="background:#f1f5f9" />
+          </div>
+          <div class="input-group">
+            <label>Nueva Contraseña (dejar en blanco para no cambiar)</label>
+            <input type="password" id="perfil-password" />
+          </div>
+          <button class="btn-main" id="btn-guardar-perfil">Guardar Cambios</button>
+        </div>
+      </section>
+
+      <section id="view-reservas" class="view">
+        <h2 style="color: var(--primary); margin-bottom: 1rem;">Mis Reservas</h2>
+        <div id="lista-reservas"></div>
+      </section>
+
+      <section id="view-faq" class="view">
+        <div class="card">
+          <h2 style="color: var(--primary); margin-bottom: 1rem;">Preguntas Frecuentes</h2>
+          <div id="faq-container"></div>
+        </div>
+      </section>
+
+      <section id="view-valoracion" class="view">
+        <div class="card">
+          <h2 style="color: var(--primary); margin-bottom: 1rem;">Deja tu Valoración</h2>
+          <p style="margin-bottom: 1rem; color: var(--muted);">Tu opinión nos ayuda a mejorar nuestro servicio.</p>
+          <div class="input-group">
+            <label>Calificación</label>
+            <select id="val-calificacion" style="padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border);">
+              <option value="5">⭐⭐⭐⭐⭐ Excelente</option>
+              <option value="4">⭐⭐⭐⭐ Muy bueno</option>
+              <option value="3">⭐⭐⭐ Bueno</option>
+              <option value="2">⭐⭐ Regular</option>
+              <option value="1">⭐ Malo</option>
+            </select>
+          </div>
+          <div class="input-group">
+            <label>Tu comentario</label>
+            <textarea id="val-comentario" rows="4" placeholder="Cuéntanos tu experiencia..."></textarea>
+          </div>
+          <button class="btn-main" id="btn-enviar-valoracion">Enviar Valoración</button>
+        </div>
+      </section>
+
+      <section id="view-acerca" class="view">
+        <div class="card">
+          <h2 style="color: var(--primary); margin-bottom: 1rem;">Acerca de Viajes Perdomo</h2>
+          <p style="line-height: 1.6; color: var(--muted);">Somos una agencia cubana dedicada a brindar el mejor servicio de transporte interprovincial. Con años de experiencia, conectamos las principales ciudades del país con modernas guaguas Yutong, garantizando comodidad, seguridad y puntualidad en cada viaje.</p>
+          <p style="margin-top: 1rem; line-height: 1.6; color: var(--muted);">Nuestro compromiso es que llegues a tu destino de la mejor manera posible.</p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- MODALES -->
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <div class="modal-header"><h3 id="modal-titulo">Reservar</h3><button id="modal-close" style="background:none;border:none;color:white;cursor:pointer;">✕</button></div>
+      <div class="modal-body">
+        <div id="modal-summary" style="background:#f8fafc; padding:0.8rem; border-radius:8px;"></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+          <div class="input-group"><label>CI</label><input type="text" id="res-ci" /></div>
+          <div class="input-group"><label>Teléfono</label><input type="tel" id="res-telefono" /></div>
+        </div>
+        <div class="input-group"><label>Fecha del viaje</label><input type="date" id="res-fecha" disabled /></div>
+        <div class="input-group"><label>Cantidad Pasajeros</label><input type="number" id="res-cantidad" min="1" value="1" /></div>
+        <button class="btn-confirm" id="btn-confirmar">✅ Confirmar Reserva</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-qr">
+    <div class="modal">
+      <div class="modal-header"><h3>Código QR de tu Reserva</h3><button id="modal-qr-close" style="background:none;border:none;color:white;cursor:pointer;">✕</button></div>
+      <div class="modal-body" style="text-align: center;">
+        <p style="margin-bottom: 1rem; color: var(--muted);">Muestra este código al gestor al abordar la guagua.</p>
+        <img id="qr-image" class="qr-modal-img" src="" alt="QR de Reserva" />
+        <p style="margin-top: 1rem; font-weight: bold;" id="qr-text-codigo"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // (fin primera parte)
